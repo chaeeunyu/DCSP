@@ -1,0 +1,5 @@
+read data(time, Vc, Vo(raw), potentio, omega) from DAQ in the same dir.
+get mean omega
+curve fitting
+get the inv func
+get a linearized line
