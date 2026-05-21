@@ -1,0 +1,6 @@
+﻿  GimbalControl.c
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\GimbalControl.c(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (949). Save the file in Unicode format to prevent data loss
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\_macro.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (949). Save the file in Unicode format to prevent data loss
+  (compiling source file 'GimbalControl.c')
+  
+  gimbal_control.vcxproj -> C:\Users\chaeeun\source\repos\DCSP\gimbal_control\Debug\gimbal_control.exe

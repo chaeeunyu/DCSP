@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="gimbal_control.vcxproj" Id="de59afd8-3716-4f52-8cac-c479755eebc1" />
+</Solution>
