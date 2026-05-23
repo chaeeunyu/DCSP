@@ -71,7 +71,7 @@
 
 #define BODE_N_MAX          (int)(12000)
 
-#define     BUF_SIZE        (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
+#define BUF_SIZE        (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
 
 
 #endif
