@@ -30,13 +30,14 @@
 #define     TRI_VALIDATION      (4)
 
 // linearization --------------------> P_CW_A/B/C 이거 readibility 좋게 변수명 좀 바꿔주세요 -> 몇번째 자리 coeff인지 나타내는 변수이름이면 좋을듯
-#define K_LIN				    (double)(8.2988)        // <---- MODIFY!!
-#define COEFF_CW_A              (double)(-3.5463)        // <---- MODIFY!!
-#define COEFF_CW_B              (double)(37.8204)        // <---- MODIFY!!
-#define COEFF_CW_C              (double)(-77.1401)        // <---- MODIFY!!
-#define COEFF_CCW_A             (double)(2.9428)        // <---- MODIFY!!
-#define COEFF_CCW_B             (double)(3.9996)        // <---- MODIFY!!
-#define COEFF_CCW_C             (double)(-23.4824)        // <---- MODIFY!!
+#define K_LIN				    (double)(8.3821)        // <---- MODIFY!!
+#define COEFF_CW_A              (double)(-3.2438)        // <---- MODIFY!!
+#define COEFF_CW_B              (double)(35.6313)        // <---- MODIFY!!
+#define COEFF_CW_C              (double)(-73.2675)        // <---- MODIFY!!
+#define COEFF_CW_C              (double)(-73.2675)        // <---- MODIFY!!
+#define COEFF_CCW_A             (double)(2.9253)        // <---- MODIFY!!
+#define COEFF_CCW_B             (double)(4.0052)        // <---- MODIFY!!
+#define COEFF_CCW_C             (double)(-23.6892)        // <---- MODIFY!!
 #define DEAD_THRESH				(double)(0.5)
 
 // motor sweep
@@ -64,8 +65,8 @@
 #define MODE_TRI   (1)
 
 // run bode
-#define BODE_SINE_AMP       (double)(0.45)
-#define N_FREQS             (20)
+#define BODE_SINE_AMP       (double)(1)
+#define N_FREQS             (55)
 #define N_SKIP_CYCLES       (int)(1)
 #define N_CYCLES			(int)(5)
 

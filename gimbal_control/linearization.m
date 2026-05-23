@@ -3,7 +3,11 @@ clear; clc; close all;
 %% ================================================================
 %  0. 파일에서 데이터 추출 → txt 4개 저장 (기존 코드)
 %% ================================================================
+<<<<<<< HEAD
 data_dir = '"C:\Users\ADMIN\source\repos\DCSP\gimbal_control\motor_sweep_data';
+=======
+data_dir = 'C:\Users\chaeeun\source\repos\DCSP\gimbal_control\motor_sweep_data';
+>>>>>>> c44f4eb0aaa1f26903f36b9dd519827935a9e706
 files = dir(fullfile(data_dir, 'step_*.out'));
 files = sort({files.name});
 files = files(~cellfun(@isempty, regexp(files, 'step_\d{3}_')));
@@ -270,4 +274,16 @@ fprintf('  K         = %.4f (rad/s)/V\n', K);
 fprintf('  omega_sat = %.2f rad/s\n', omega_sat);
 fprintf('  Vc_sat    = %.2f V (CW) / %.2f V (CCW)\n', Vc_sat_CW, Vc_sat_CCW);
 fprintf('  Vcmd_max  = %.2f V\n', Vcmd_max);
+<<<<<<< HEAD
 fprintf('============================================================\n');
+=======
+fprintf('============================================================\n');
+
+figure;
+grid on; hold on;
+plot(Vcmd_ref, K*Vcmd_ref, 'k--');           % ← (Vcmd_ref-2.5) 삭제
+plot(Vcmd_ref, omega_final, 'r-');
+legend('이상적 직선', '선형화 후 실제');
+xlabel('V_{cmd,ref} [V]'); ylabel('\omega [rad/s]');
+
+>>>>>>> c44f4eb0aaa1f26903f36b9dd519827935a9e706

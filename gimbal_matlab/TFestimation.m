@@ -15,9 +15,10 @@ tblMagLin   = 10.^(tblMagAtt / 20);
 tblFreqResp = tblMagLin .* exp(1j * tblPhsDelay);
 
 Nnum = 0;
-Nden = 2;
-[num, den] = invfreqs(tblFreqResp, tblOmega, Nnum, Nden);
+Nden = 1;
+
+wt = ones(size(tblOmega)) ./ abs(tblFreqResp); 
+[num, den] = invfreqs(tblFreqResp, tblOmega, Nnum, Nden, wt);
 EstTF = tf(num, den);
 
 figure; bode(EstTF); grid on;
-

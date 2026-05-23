@@ -582,7 +582,11 @@ void RunBode(void)
     printf("  Estimated time : ~%.0f sec (%.1f min)\n", total_est, total_est / 60.0);
     printf("============================================================\n\n");
     printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> c44f4eb0aaa1f26903f36b9dd519827935a9e706
     getchar();
     GetAsyncKeyState(VK_SPACE);
 
