@@ -1,17 +1,17 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\",
+  "WorkspaceRootPath": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|solutionrelative:GimbalControl.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\_macro.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\_macro.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|solutionrelative:_macro.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\NIDAQmx.lib||{25834150-CD7E-11D0-92DF-00A0C9138C45}",
+      "AbsoluteMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|solutionrelative:GimbalControl.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\NIDAQmx.lib||{25834150-CD7E-11D0-92DF-00A0C9138C45}",
       "RelativeMoniker": "D:0:0:{DE59AFD8-3716-4F52-8CAC-C479755EEBC1}|gimbal_control.vcxproj|solutionrelative:NIDAQmx.lib||{25834150-CD7E-11D0-92DF-00A0C9138C45}"
     }
   ],
@@ -26,17 +26,34 @@
           "Children": [
             {
               "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
               "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "GimbalControl.c",
+              "DocumentMoniker": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c",
+              "RelativeDocumentMoniker": "GimbalControl.c",
+              "ToolTip": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c",
+              "RelativeToolTip": "GimbalControl.c",
+              "ViewState": "AgIAADMCAAAAAAAAAAAowOYBAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2026-05-17T12:51:54.692Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
               "Title": "_macro.h",
-              "DocumentMoniker": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\_macro.h",
+              "DocumentMoniker": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\_macro.h",
               "RelativeDocumentMoniker": "_macro.h",
-              "ToolTip": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\_macro.h*",
-              "RelativeToolTip": "_macro.h*",
-              "ViewState": "AgIAAEYAAAAAAAAAAAAUwFEAAAAAAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\_macro.h",
+              "RelativeToolTip": "_macro.h",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAACUAAABJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2026-05-19T01:17:49.433Z",
               "EditorCaption": ""
@@ -45,25 +62,12 @@
               "$type": "Document",
               "DocumentIndex": 2,
               "Title": "NIDAQmx.lib",
-              "DocumentMoniker": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\NIDAQmx.lib",
+              "DocumentMoniker": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\NIDAQmx.lib",
               "RelativeDocumentMoniker": "NIDAQmx.lib",
-              "ToolTip": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\NIDAQmx.lib",
+              "ToolTip": "C:\\Users\\chaeeun\\source\\repos\\DCSP\\gimbal_control\\NIDAQmx.lib",
               "RelativeToolTip": "NIDAQmx.lib",
-              "Icon": "00000000-0000-0000-0000-000000000000.000000|iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKDSURBVDhPzZSxT1pRFMa/BwQQkA42UBEGqpFIASWE1KUmDHWjNvZPqGsXatomxqYDi40lJh21M1NpIlsxweAgYozQ0qEmdiFg0aoJEghqoO9c7nuUmqaLg7/kcc/9cs55h3fPubhWWq2WwM0rRCKR9z6fz8\u002B3Xezs7GyHQqFnfNuFQIFiYr7tEAwGHxUKBdvu7i5X2ni9XthstkI8Hl/lUhdCrVZrZTKZVqVS4VIbChSDkEwm4brnYlr\u002BWx6BQIBehr9fZDQa4ff7oaJNNBpFuVyGwWDA5eUlDg8PEQ6HmaPFMoDp6SfMPjk9ZatYOZaWlmAymaBSqVCtVmE2mzsJiampx5h8OImDgxLmX89zVawq/xUvX71gdqPRgMMxzGyNRoPZ57Po77cgkfiMzfQm0xXsV0StVkOn00Gr1UIQOmfVbDZRr9fZQ7YE\u002BZAvxVCshFzh9nYGJ8fHOKue4eLigqv/hnxWxXPpNfRi/8c\u002BV/\u002BoMJfLIfYpJpafYN/xf5AP\u002BVIMxUrICa\u002BLm59QPpTR0VEM3h1kh0LNLGGxWDB\u002Bf5zZ6a00WwnqP2py6VCoCwi5Qmpgj8cDx7ADCkWncKPxFtPpIVuCfMiX9AExVkKucG0tgfX1JOu18/NzrgJ7e9\u002Bx8HaB2dTYbnd7DMlneWWZJaYTt9vtTO\u002BalIkHE\u002BII/sTiu0WuAi6XGzNPZ5i98mGFrYQ0KWbzHWxspJD70m4dOWE2m8WvoyOIl0VXH5ZKRcRiH2VbGj2pD2lSisUiBEV7upRzc3NvaLh7erRshPR6PYaGhjA2NsaqUCqVTKfHarWKf9nNLgL6NORLet/tPoyMjMDpdEJIpVJb4n149UK8GQC/AUMr/Dms\u002B6V5AAAAAElFTkSuQmCC",
+              "Icon": "00000000-0000-0000-0000-000000000000.000000|iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKlSURBVDhPzZS/TxNhGMc/d23elmutA4bKAQNKaEB60BCiiyQdZKsQ/RNkdUGiJkTjwILRhoQRnJksCd08khoY\u002BBUC1TpooktTsPiDBJpeaC93DtgXaHRz8DtdPu/zfu\u002BbPM/zwr\u002BU67pKPaspmUzO9Pf3D9RzgK2trc2xsbH79RxASSaTM67r1nMSicTtfD7ftr29fY7HYjHa2try6XR68dzBbynlctnd2NhwDw8Pzx3EYjHS6TSZTIaeaz0A5D7kiMfjJBIJ6n8UCoUYGBjACzA/P0\u002BxWCQYDGLbNvv7\u002B0xOTgKg6y3cuXMXgJ8HBwDk83mmp6dpamrC6/VSKpUIh8OnhgDDwyMM3Rpib2\u002BXJ0\u002Bf1DC53HsePX4IwPHxMZFIJwA\u002Bn4/xB\u002BM0N\u002BuY5htW11YBUGsXhRBomobf70dRTnvlOA6WZWFZFo7jSK4oCn6/H03TEEJILhNubm7w88cPjkpHVKtVWfA3VatVFtOLXAhe4POXz5LLhNlsltRCCtM0sW1bFvxNtm1jmiaphRTZbFZyafiv9P8byqb09vZy9cpVjkpHZDIZWaDrOjeu3wBgbX1Ncq/XSzwel02xLAvOJtT1FgzDINIZQVVPg4dCFzEMA8MwCIUuSq6qKpHOCIZh0KK3SC4TLi2ZvH2bwXEcKpWKLPj06SNTz6fg92BHoydrWKlUmJ2bRVVVbNumvb0dzhoOD48weHOQYvErL16\u002BqGF6eqKM3hsFYO7VnOS1TQmHL7Oyskz23cnoSMOdnR2\u002Bf/tGuVw\u002BN4e7uwVSqdfyu7Z6tTnUNI1CoYCinmyXZ2Ji4lmpVKKhwY8QgkAgQEdHB319ffh8PjweD0IIhBC0trYSjUYJh8M4jkMgEEAIQeOlRrq6uuju7kZZXl5ed//0IP4v\u002BgVDK/w5q2QgwwAAAABJRU5ErkJggg==",
               "WhenOpened": "2026-05-17T12:53:06.291Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "GimbalControl.c",
-              "DocumentMoniker": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c",
-              "RelativeDocumentMoniker": "GimbalControl.c",
-              "ToolTip": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c*",
-              "RelativeToolTip": "GimbalControl.c*",
-              "ViewState": "AgIAAAUDAAAAAAAAAAAUwAcDAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-05-17T12:51:54.692Z",
-              "EditorCaption": ""
             }
           ]
         }
