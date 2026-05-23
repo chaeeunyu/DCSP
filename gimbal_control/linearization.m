@@ -3,7 +3,7 @@ clear; clc; close all;
 %% ================================================================
 %  0. 파일에서 데이터 추출 → txt 4개 저장 (기존 코드)
 %% ================================================================
-data_dir = 'C:\Users\chaeeun\source\repos\DCSP\gimbal_control\motor_sweep_data';
+data_dir = 'C:\Users\ADMIN\source\repos\Digital-Control-Signal-Processing\motor_sweep_data';
 files = dir(fullfile(data_dir, 'step_*.out'));
 files = sort({files.name});
 files = files(~cellfun(@isempty, regexp(files, 'step_\d{3}_')));
@@ -146,6 +146,7 @@ fprintf('  Vc_sat_CCW = %.2f V  →  omega_min = %.2f rad/s\n', Vc_sat_CCW, omeg
 fprintf('  omega_sat  = %.2f rad/s\n', omega_sat);
 fprintf('  K          = %.4f (rad/s)/V\n\n', K);
 
+
 %% ================================================================
 %  6. Inverse Mapping: Vcmd → omega_target → Vc
 %  ★ 변경: -2.5:0.001:2.5  (스텝 0.01 → 0.001)
@@ -200,7 +201,7 @@ for i = 1:length(Vcmd_ref)
         end
 
     else                                             % 데드존
-        Vc_mapped(i) = 2.5;
+        Vc_mapped(i) = 2.5 + 4.612 * Vcmd_ref(i);
     end
 end
 
@@ -211,17 +212,18 @@ Vc_mapped = max(0, min(5, Vc_mapped));
 %% ================================================================
 %  7. 선형화 검증용 omega 계산
 %% ================================================================
+%% 7. 선형화 검증용 omega 계산
 omega_final = zeros(size(Vcmd_ref));
 for i = 1:length(Vcmd_ref)
-    if Vc_mapped(i) > 2.5 + 0.01
+    om = K * Vcmd_ref(i);          % ← Vc_mapped 대신 omega_target 기준
+    if om > 0.5
         omega_final(i) = polyval(p_cw,  Vc_mapped(i));
-    elseif Vc_mapped(i) < 2.5 - 0.01
+    elseif om < -0.5
         omega_final(i) = polyval(p_ccw, Vc_mapped(i));
     else
-        omega_final(i) = 0;
+        omega_final(i) = 0;        % 데드존 → omega = 0
     end
 end
-
 %% ================================================================
 %  8. Figure 2: 선형화 검증
 %  ★ 변경: xlim / xline을 새 범위에 맞게 수정
@@ -271,11 +273,3 @@ fprintf('  omega_sat = %.2f rad/s\n', omega_sat);
 fprintf('  Vc_sat    = %.2f V (CW) / %.2f V (CCW)\n', Vc_sat_CW, Vc_sat_CCW);
 fprintf('  Vcmd_max  = %.2f V\n', Vcmd_max);
 fprintf('============================================================\n');
-
-figure;
-grid on; hold on;
-plot(Vcmd_ref, K*Vcmd_ref, 'k--');           % ← (Vcmd_ref-2.5) 삭제
-plot(Vcmd_ref, omega_final, 'r-');
-legend('이상적 직선', '선형화 후 실제');
-xlabel('V_{cmd,ref} [V]'); ylabel('\omega [rad/s]');
-

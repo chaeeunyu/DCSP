@@ -323,7 +323,7 @@ void RunSweep(void)
         /* Apply voltage */
         motor_power(ON, Vcmd);
 
-        do{
+        do {
             DAQ_ReadSample();
             time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
@@ -419,7 +419,9 @@ double InverseMap(double vcmd_ref)
             else                   Vc = 2.5;
         }
     }
-
+    else {
+		Vc = 2.5 + DEAD_ZONE_LINEAR * vcmd_ref; //deadzone linearization, comment from prof LLLAAAA
+    }
 
     if (Vc < 0.0) Vc = 0.0;
     if (Vc > 5.0) Vc = 5.0;
@@ -443,7 +445,7 @@ void RunWaveVerify(int mode)
     count = 0;
 
     // main loop
-    do{
+    do {
 
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
@@ -582,7 +584,7 @@ void RunBode(void)
     printf("  Estimated time : ~%.0f sec (%.1f min)\n", total_est, total_est / 60.0);
     printf("============================================================\n\n");
     printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
-    
+
     getchar();
     GetAsyncKeyState(VK_SPACE);
 
@@ -616,7 +618,7 @@ void RunBode(void)
             Vcmd = BODE_SINE_AMP * sin(2.0 * UNIT_PI * freq * t);
             Vc = InverseMap(Vcmd);
 
-            // ★ 버퍼 저장은 count++ 이전에
+            
             bode_time[count] = t;
             bode_Vcmd[count] = Vcmd;
             bode_Vc[count] = Vc;
@@ -665,4 +667,3 @@ void RunBode(void)
     motor_power(ON, NEUTRAL);
     printf("\n[MODE 4 Done] Output folder: %s\n\n", outputDir);
 }
-

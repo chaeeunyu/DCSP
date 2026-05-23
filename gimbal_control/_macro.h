@@ -39,7 +39,7 @@
 #define COEFF_CCW_B             (double)(4.0052)        // <---- MODIFY!!
 #define COEFF_CCW_C             (double)(-23.6892)        // <---- MODIFY!!
 #define DEAD_THRESH				(double)(0.5)
-
+#define DEAD_ZONE_LINEAR        (double)(4.612)        //dead zone linareze voltage
 // motor sweep
 #define HOLD_TIME           (double)(4.0)
 #define N_HOLD              (int)(HOLD_TIME * SAMPLING_FREQ + 100)  
@@ -72,7 +72,7 @@
 
 #define BODE_N_MAX          (int)(12000)
 
-#define     BUF_SIZE        (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
+#define BUF_SIZE        (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
 
 
 #endif
