@@ -22,12 +22,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "SelectedChildIndex": 3,
           "Children": [
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
@@ -40,7 +36,7 @@
               "RelativeDocumentMoniker": "_macro.h",
               "ToolTip": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\_macro.h*",
               "RelativeToolTip": "_macro.h*",
-              "ViewState": "AgIAACMAAAAAAAAAAAAEwCoAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAEYAAAAAAAAAAAAUwFEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2026-05-19T01:17:49.433Z",
               "EditorCaption": ""
@@ -64,7 +60,7 @@
               "RelativeDocumentMoniker": "GimbalControl.c",
               "ToolTip": "C:\\Users\\ADMIN\\source\\repos\\DCSP\\gimbal_control\\GimbalControl.c*",
               "RelativeToolTip": "GimbalControl.c*",
-              "ViewState": "AgIAAJwBAAAAAAAAAAAEwKYBAABdAAAAAAAAAA==",
+              "ViewState": "AgIAAAUDAAAAAAAAAAAUwAcDAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2026-05-17T12:51:54.692Z",
               "EditorCaption": ""

@@ -3,7 +3,7 @@ clear; clc; close all;
 %% ================================================================
 %  0. 파일에서 데이터 추출 → txt 4개 저장 (기존 코드)
 %% ================================================================
-data_dir = 'C:\Users\ADMIN\source\repos\Digital-Control-Signal-Processing\motor_sweep_data';
+data_dir = 'C:\Users\ADMIN\source\repos\DCSP\gimbal_control\motor_sweep_data';
 files = dir(fullfile(data_dir, 'step_*.out'));
 files = sort({files.name});
 files = files(~cellfun(@isempty, regexp(files, 'step_\d{3}_')));
