@@ -7,10 +7,6 @@ int32 sampsPerChanRead;
 int32 sampsPerChanWritten;
 
 
-double TEST_FREQS[N_FREQS] = {
-    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0
-};
-
 // time 관련 변수들 structure로 묶으려다가 갯수가 애매해서 걍 놔뒀어요
 // Vcmd, Vc, Vpot, omega, ... 이런애들도 어디는 쓰고 어디는 안쓰는데 있어서 걍 놔둠
 // basic variable
@@ -55,11 +51,13 @@ double bode_result_freq[N_FREQS];
 double bode_result_gain[N_FREQS];
 double bode_result_phase[N_FREQS];
 
+double freq_step[N_FREQS] = { 0.0 };
+
 
 /*Function Declarations*/
 double GetWindowTime(void);
 void   memorySet(void);
-void memorySet_bode(void);
+void   memorySet_bode(void);
 void   BusyWait_ms(double ms);
 void   WaitNextSample(void);
 int    IsEmergencyStop(void);
@@ -76,6 +74,7 @@ double InverseMap(double vcmd_ref);
 double Triangle_cmd(double t);
 void   RunWaveVerify(int mode);
 
+//void TEST_FREQS(void);
 void   RunBode(void); // c코드에서는 freq sweep (raw data)만 뽑고 DFT나 mag/phase 계산은 매트랩에서 하는게 더 쉬울 것 같아요
 void   ComputeGainPhase(double* vcmd_buf, double* omega_buf, int N, double freq, double dt, double* gain_out, double* phase_out);
 
@@ -544,6 +543,17 @@ void memorySet_bode(void) {
     memset(bode_omega_target, 0, sizeof(bode_omega_target));
 }
 
+//void TEST_FREQS(void) {
+//    int i = 0;
+//    double vcmd = 0.0;
+//    double Vinput[N_FREQS] = { 0.0 };
+//    do {
+//        Vinput[i] = vcmd;
+//        i++;
+//        vcmd = vcmd + 0.1;
+//    } while (vcmd <= 5.5);
+//}
+
 
 void RunBode(void)
 {
@@ -553,10 +563,18 @@ void RunBode(void)
     double total_est = 0.0;
     int    N_total = 0;
     char   fname[256];
+    int j = 0;
+    double freq_ = 0.1;
+    do {
+        freq_step[j] = freq_;
+        j++;
+        freq_ = freq_ + 0.1;
+    } while (freq_ <= 5.5);
 
     const char* outputDir = "bode_data";
     _mkdir(outputDir);
-
+    for (int i = 0; i < N_FREQS; i++)
+        total_est += (1.0 / freq_step[i]) * N_CYCLES;
     printf("============================================================\n");
     printf("  [MODE 4] Frequency Response (Bode Plot)\n");
     printf("  Sine amplitude : %.2f V  (Vcmd)\n", BODE_SINE_AMP);
@@ -564,8 +582,7 @@ void RunBode(void)
     printf("  Estimated time : ~%.0f sec (%.1f min)\n", total_est, total_est / 60.0);
     printf("============================================================\n\n");
     printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
-    for (int i = 0; i < N_FREQS; i++)
-        total_est += (1.0 / TEST_FREQS[i]) * N_CYCLES;
+    
     getchar();
     GetAsyncKeyState(VK_SPACE);
 
@@ -573,7 +590,7 @@ void RunBode(void)
 
     for (int fi = 0; fi < N_FREQS && !IsEmergencyStop(); fi++)
     {
-        freq = TEST_FREQS[fi];
+        freq = freq_step[fi];
         T_total = (1.0 / freq) * N_CYCLES;
         N_total = (int)(T_total * SAMPLING_FREQ);
         memorySet_bode();

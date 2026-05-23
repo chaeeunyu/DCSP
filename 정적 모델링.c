@@ -221,11 +221,10 @@ void main(void)
     {
         double      Vcmd = voltSeq[step];
         const char* dir = (step % 2 == 0) ? "CW" : "CCW";
-        const char* zone = (Vcmd >= 2.0 && Vcmd <= 3.0) ? "DEADZONE" : "OUTER";
 
         printf("-----------------------------------------\n");
-        printf("[Step %3d/%d]  Vcmd = %.2f V  (%s)  [%s]\n",
-            step + 1, N_STEPS, Vcmd, dir, zone);
+        printf("[Step %3d/%d]  Vcmd = %.2f V  (%s) \n",
+            step + 1, N_STEPS, Vcmd, dir);
 
         /* Apply voltage */
         DAQmxWriteAnalogScalarF64(taskAO0, 1, 10.0, 3.0, NULL);

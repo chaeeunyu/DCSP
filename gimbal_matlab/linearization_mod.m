@@ -4,7 +4,7 @@ clear; clc; close all;
 %  0. 파일에서 데이터 추출 → txt 4개 저장 (기존 코드)
 % ================================================================
 % 1. 파일 목록 가져오기
-data_dir = 'motor_sweep_data_2';
+data_dir = 'motor_sweep_data';
 files = dir(fullfile(data_dir, 'step_*.out'));
 
 % 결과 저장을 위한 배열 초기화
