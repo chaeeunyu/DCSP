@@ -1,4 +1,4 @@
-D = readmatrix('tri_A1.0_T5.out', ...
+D = readmatrix('tri_A1.0_F0.0250.out', ...
                'FileType','text', 'NumHeaderLines', 2);
 t      = D(:,1);
 vcmd   = D(:,2);
@@ -7,7 +7,7 @@ om     = D(:,6);
 
 %% 주기 평균
 Fs      = 200;
-T       = 5;
+T       = 40;
 N_per   = T * Fs;          % 한 주기당 샘플 수 = 8000
 N_cyc   = floor(length(t) / N_per);   % 실제 완성된 주기 수
 

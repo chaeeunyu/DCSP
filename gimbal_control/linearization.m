@@ -86,22 +86,20 @@ legend('Location', 'northwest', 'FontSize', 11);
 set(gcf, 'Position', [100, 100, 900, 550]);
 
 %% ================================================================
-%  3. 유효 데이터 추출 (데드존 제외)
+%  3. 유효 데이터 추출 (데드존 제외 + Vc 범위 제한)
 %% ================================================================
-valid_CW  = om_CW  >  0.5;
-valid_CCW = om_CCW < -0.5;
+om_thresh  = 0.2;   % ★ omega 임계값 (데드존 경계) — 여기만 바꾸면 전체 반영
+Vc_fit_min = 1.5;
+Vc_fit_max = 3.5;
 
-vc_cw_fit  = Vc_CW(valid_CW);   om_cw_fit  = om_CW(valid_CW);
-vc_ccw_fit = Vc_CCW(valid_CCW);  om_ccw_fit = om_CCW(valid_CCW);
-
-fprintf('\nCW  유효 데이터: %d개\n', sum(valid_CW));
-fprintf('CCW 유효 데이터: %d개\n', sum(valid_CCW));
+valid_CW  = om_CW  >  om_thresh & Vc_CW  >= Vc_fit_min & Vc_CW  <= Vc_fit_max;
+valid_CCW = om_CCW < -om_thresh & Vc_CCW >= Vc_fit_min & Vc_CCW <= Vc_fit_max;
 
 %% ================================================================
 %  4. 2차 다항식 피팅
 %% ================================================================
-valid_CW  = om_CW  >  0.5;
-valid_CCW = om_CCW < -0.5;
+valid_CW  = om_CW  >  om_thresh & Vc_CW  >= Vc_fit_min & Vc_CW  <= Vc_fit_max;
+valid_CCW = om_CCW < -om_thresh & Vc_CCW >= Vc_fit_min & Vc_CCW <= Vc_fit_max;
 
 vc_cw_fit  = Vc_CW(valid_CW);   om_cw_fit  = om_CW(valid_CW);
 vc_ccw_fit = Vc_CCW(valid_CCW);  om_ccw_fit = om_CCW(valid_CCW);
@@ -130,8 +128,8 @@ xlim([0 5]); ylim([-30 30]);
 %% ================================================================
 %  5. K 결정
 %% ================================================================
-Vc_sat_CW  = 4.5;
-Vc_sat_CCW = 5.0 - Vc_sat_CW;  % = 0.5V
+Vc_sat_CW  = 3.5;
+Vc_sat_CCW = 1.5;
 
 omega_max =  polyval(p_cw,  Vc_sat_CW);
 omega_min =  polyval(p_ccw, Vc_sat_CCW);
@@ -146,26 +144,24 @@ fprintf('  Vc_sat_CCW = %.2f V  →  omega_min = %.2f rad/s\n', Vc_sat_CCW, omeg
 fprintf('  omega_sat  = %.2f rad/s\n', omega_sat);
 fprintf('  K          = %.4f (rad/s)/V\n\n', K);
 
-
 %% ================================================================
 %  6. Inverse Mapping: Vcmd → omega_target → Vc
-%  ★ 변경: -2.5:0.001:2.5  (스텝 0.01 → 0.001)
 %% ================================================================
-Vcmd_ref     = -2.5:0.001:2.5;          % ← 변경
+Vcmd_ref     = -2.5:0.001:2.5;
 omega_target = K * Vcmd_ref;
 Vc_mapped    = zeros(size(Vcmd_ref));
 
 for i = 1:length(Vcmd_ref)
     om = omega_target(i);
 
-    if om > 0.5                                      % CW
+    if om > om_thresh                                % CW
         a = p_cw(1); b = p_cw(2);
         disc = b^2 - 4*a*(p_cw(3) - om);
         if disc >= 0
             root1 = (-b + sqrt(disc)) / (2*a);
             root2 = (-b - sqrt(disc)) / (2*a);
-            valid1 = (root1 >= 2.5) && (root1 <= 5.0);
-            valid2 = (root2 >= 2.5) && (root2 <= 5.0);
+            valid1 = (root1 >= 2.5) && (root1 <= 3.5);
+            valid2 = (root2 >= 2.5) && (root2 <= 3.5);
             if valid1 && valid2
                 Vc_mapped(i) = min(root1, root2);
             elseif valid1
@@ -179,14 +175,14 @@ for i = 1:length(Vcmd_ref)
             Vc_mapped(i) = 2.5;
         end
 
-    elseif om < -0.5                                % CCW
+    elseif om < -om_thresh                          % CCW
         a = p_ccw(1); b = p_ccw(2);
         disc = b^2 - 4*a*(p_ccw(3) - om);
         if disc >= 0
             root1 = (-b + sqrt(disc)) / (2*a);
             root2 = (-b - sqrt(disc)) / (2*a);
-            valid1 = (root1 >= 0) && (root1 <= 2.5);
-            valid2 = (root2 >= 0) && (root2 <= 2.5);
+            valid1 = (root1 >= 1.5) && (root1 <= 2.5);
+            valid2 = (root2 >= 1.5) && (root2 <= 2.5);
             if valid1 && valid2
                 Vc_mapped(i) = min(root1, root2);
             elseif valid1
@@ -200,33 +196,32 @@ for i = 1:length(Vcmd_ref)
             Vc_mapped(i) = 2.5;
         end
 
-    else                                             % 데드존
-        Vc_mapped(i) = 2.5 + 4.612 * Vcmd_ref(i);
+    elseif  -om_thresh <= om && om <  0                                     % 데드존
+        Vc_mapped(i) = 2.5 + 8.9846 * Vcmd_ref(i);
+    else 
+         Vc_mapped(i) = 2.5 + 8.8489 * Vcmd_ref(i);
     end
 end
 
 Vc_mapped = max(0, min(5, Vc_mapped));
-Vc_mapped = max(0, min(5, Vc_mapped));
-
 
 %% ================================================================
 %  7. 선형화 검증용 omega 계산
 %% ================================================================
-%% 7. 선형화 검증용 omega 계산
 omega_final = zeros(size(Vcmd_ref));
 for i = 1:length(Vcmd_ref)
-    om = K * Vcmd_ref(i);          % ← Vc_mapped 대신 omega_target 기준
-    if om > 0.5
+    om = K * Vcmd_ref(i);
+    if om > om_thresh
         omega_final(i) = polyval(p_cw,  Vc_mapped(i));
-    elseif om < -0.5
+    elseif om < -om_thresh
         omega_final(i) = polyval(p_ccw, Vc_mapped(i));
     else
         omega_final(i) = 0;        % 데드존 → omega = 0
     end
 end
+
 %% ================================================================
 %  8. Figure 2: 선형화 검증
-%  ★ 변경: xlim / xline을 새 범위에 맞게 수정
 %% ================================================================
 figure(2); clf; hold on; grid on;
 plot(Vcmd_ref, K*Vcmd_ref, 'k--', ...
@@ -234,22 +229,21 @@ plot(Vcmd_ref, K*Vcmd_ref, 'k--', ...
 plot(Vcmd_ref, omega_final, 'r-', ...
     'LineWidth', 2,   'DisplayName', '선형화 후 실제 출력');
 yline(0, 'k:', 'LineWidth', 1, 'HandleVisibility', 'off');
-xline(0, 'k:', 'LineWidth', 1, 'HandleVisibility', 'off');  % ← 변경 (2.5 → 0)
+xline(0, 'k:', 'LineWidth', 1, 'HandleVisibility', 'off');
 xlabel('V_{cmd,ref} [V]', 'FontSize', 13);
 ylabel('\omega [rad/s]',   'FontSize', 13);
 title('선형화 검증: V_{cmd} vs \omega', 'FontSize', 14, 'FontWeight', 'bold');
 legend('Location', 'northwest', 'FontSize', 11);
-xlim([-2.5 2.5]); ylim([-30 30]);          % ← 변경
+xlim([-2.5 2.5]); ylim([-30 30]);
 set(gcf, 'Position', [100, 100, 900, 550]);
 
 %% ================================================================
 %  9. Figure 3: Lookup Table 시각화
-%  ★ 변경: xlim을 새 범위에 맞게 수정
 %% ================================================================
 figure(3); clf; hold on; grid on;
 plot(Vcmd_ref, Vc_mapped, 'b-', 'LineWidth', 2, 'DisplayName', 'Lookup Table');
 yline(2.5,        'r--', 'LineWidth', 1, 'DisplayName', '중립 2.5V');
-xline(0,          'r--', 'LineWidth', 1, 'HandleVisibility', 'off');  % ← 변경 (2.5 → 0)
+xline(0,          'r--', 'LineWidth', 1, 'HandleVisibility', 'off');
 yline(Vc_sat_CW,  'g--', 'LineWidth', 1, ...
     'DisplayName', sprintf('Vc\\_sat CW = %.1fV', Vc_sat_CW));
 yline(Vc_sat_CCW, 'g--', 'LineWidth', 1, ...
@@ -258,7 +252,7 @@ xlabel('V_{cmd,ref} [V]',  'FontSize', 13);
 ylabel('V_c 실제 출력 [V]', 'FontSize', 13);
 title('역함수 매핑 테이블 (Lookup Table)', 'FontSize', 14, 'FontWeight', 'bold');
 legend('Location', 'northwest', 'FontSize', 11);
-xlim([-2.5 2.5]); ylim([0 5]);             % ← 변경
+xlim([-2.5 2.5]); ylim([0 5]);
 set(gcf, 'Position', [100, 100, 900, 550]);
 
 %% ================================================================
@@ -268,8 +262,9 @@ LUT = [Vcmd_ref', Vc_mapped'];
 writematrix(LUT, 'lookup_table.txt', 'Delimiter', 'tab');
 fprintf('[저장 완료] lookup_table.txt  (%d rows)\n', length(Vcmd_ref));
 fprintf('============================================================\n');
-fprintf('  K         = %.4f (rad/s)/V\n', K);
-fprintf('  omega_sat = %.2f rad/s\n', omega_sat);
-fprintf('  Vc_sat    = %.2f V (CW) / %.2f V (CCW)\n', Vc_sat_CW, Vc_sat_CCW);
-fprintf('  Vcmd_max  = %.2f V\n', Vcmd_max);
+fprintf('  om_thresh  = %.2f rad/s\n', om_thresh);
+fprintf('  K          = %.4f (rad/s)/V\n', K);
+fprintf('  omega_sat  = %.2f rad/s\n', omega_sat);
+fprintf('  Vc_sat     = %.2f V (CW) / %.2f V (CCW)\n', Vc_sat_CW, Vc_sat_CCW);
+fprintf('  Vcmd_max   = %.2f V\n', Vcmd_max);
 fprintf('============================================================\n');

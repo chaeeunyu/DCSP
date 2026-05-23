@@ -1,6 +1,11 @@
 clear; clc; close all;
 
 %% ================================================================
+%  파라미터 설정 (여기서 값을 변경하세요)
+%% ================================================================
+omega_thresh = 0.2;   % 데드존 임계값 [rad/s]  ← 이 값만 바꾸면 전체 반영
+
+%% ================================================================
 %  0. 파일에서 데이터 추출
 %% ================================================================
 data_dir = 'C:\Users\ADMIN\source\repos\DCSP\gimbal_control\motor_sweep_data';
@@ -78,8 +83,8 @@ xlim([0 5]); ylim([-30 30]);
 %% ================================================================
 %  3. 유효 데이터 추출 (Vc 1.5~3.5V 저속 구간 + 데드존 제외)
 %% ================================================================
-valid_CW  = (Vc_CW  > 2.5) & (Vc_CW  <= 3.5) & (om_CW  >  0.5);
-valid_CCW = (Vc_CCW >= 1.5) & (Vc_CCW <  2.5) & (om_CCW < -0.5);
+valid_CW  = (Vc_CW  > 2.5) & (Vc_CW  <= 3.5) & (om_CW  >  omega_thresh);
+valid_CCW = (Vc_CCW >= 1.5) & (Vc_CCW <  2.5) & (om_CCW < -omega_thresh);
 
 vc_cw_fit  = Vc_CW(valid_CW);    om_cw_fit  = om_CW(valid_CW);
 vc_ccw_fit = Vc_CCW(valid_CCW);  om_ccw_fit = om_CCW(valid_CCW);
@@ -99,7 +104,7 @@ fprintf('CCW 유효(저속 구간 1.5~3.5V): %d개,  Vc 범위: [%.2f, %.2f]\n',
 %       → p = [slope; intercept]
 %% ================================================================
 epsilon = 0.05;   % 가중치 분모 보호값
-n_w     = 2;      % 가중치 지수 (클수록 중립 집중)
+n_w     = 1;      % 가중치 지수 (클수록 중립 집중)
 
 % --- CW ---
 w_cw  = 1 ./ (abs(vc_cw_fit  - 2.5) + epsilon).^n_w;
@@ -147,9 +152,8 @@ set(gcf, 'Position', [100, 700, 900, 500]);
 %% ================================================================
 %  6. K 결정 (저속 구간 포화점 Vc_sat = 3.5V / 1.5V 기준)
 %% ================================================================
-Vc_sat_CW  = 4.5;
-Vc_sat_CCW = 5.0 - Vc_sat_CW;   % = 1.5V
-
+Vc_sat_CW  = 3.5;
+Vc_sat_CCW = 5.0 - Vc_sat_CW;
 omega_max =  polyval(p_cw,  Vc_sat_CW);
 omega_min =  polyval(p_ccw, Vc_sat_CCW);
 omega_sat = min(abs(omega_max), abs(omega_min));
@@ -175,31 +179,32 @@ omega_target = K * Vcmd_ref;
 Vc_mapped    = zeros(size(Vcmd_ref));
 
 % 데드존 경계 Vc 값 (1차 피팅 외삽)
-Vc_dead_pos = ( 0.5 - p_cw(2))  / p_cw(1);   % omega = +0.5  → CW 쪽 경계 Vc
-Vc_dead_neg = (-0.5 - p_ccw(2)) / p_ccw(1);   % omega = -0.5  → CCW 쪽 경계 Vc
+Vc_dead_pos = ( omega_thresh - p_cw(2))  / p_cw(1);   % omega = +omega_thresh → CW 쪽 경계 Vc
+Vc_dead_neg = (-omega_thresh - p_ccw(2)) / p_ccw(1);  % omega = -omega_thresh → CCW 쪽 경계 Vc
 fprintf('데드존 경계: CW  Vc = %.4f V\n', Vc_dead_pos);
 fprintf('데드존 경계: CCW Vc = %.4f V\n', Vc_dead_neg);
 
-% 데드존 내 Vcmd 임계값 (K*Vcmd = ±0.5)
-Vcmd_dead = 0.5 / K;
+% 데드존 내 Vcmd 임계값 (K*Vcmd = ±omega_thresh)
+Vcmd_dead = omega_thresh / K;
 fprintf('데드존 Vcmd 임계: ±%.4f V\n\n', Vcmd_dead);
 
 for i = 1:length(Vcmd_ref)
     om = omega_target(i);
 
-    if om > 0.5
+    if om > omega_thresh
         % CW: 1차 역함수  Vc = (omega - b) / a
         Vc_mapped(i) = (om - p_cw(2)) / p_cw(1);
 
-    elseif om < -0.5
+    elseif om < -omega_thresh
         % CCW: 1차 역함수  Vc = (omega - b) / a
         Vc_mapped(i) = (om - p_ccw(2)) / p_ccw(1);
 
     else
+        Vc_mapped(i) = 2.5;
         % 데드존: CCW 경계 → 중립(2.5V) → CW 경계 선형 보간
         % Vcmd 가 [-Vcmd_dead, +Vcmd_dead] 범위에서 연속적으로 연결
-        t_interp     = (Vcmd_ref(i) + Vcmd_dead) / (2 * Vcmd_dead);  % 0→1
-        Vc_mapped(i) = Vc_dead_neg + (Vc_dead_pos - Vc_dead_neg) * t_interp;
+        %t_interp     = (Vcmd_ref(i) + Vcmd_dead) / (2 * Vcmd_dead);  % 0→1
+        %Vc_mapped(i) = Vc_dead_neg + (Vc_dead_pos - Vc_dead_neg) * t_interp;
     end
 end
 
@@ -213,9 +218,9 @@ Vc_mapped = max(0, min(5, Vc_mapped));
 omega_final = zeros(size(Vcmd_ref));
 for i = 1:length(Vcmd_ref)
     om = K * Vcmd_ref(i);
-    if om > 0.5
+    if om > omega_thresh
         omega_final(i) = polyval(p_cw,  Vc_mapped(i));
-    elseif om < -0.5
+    elseif om < -omega_thresh
         omega_final(i) = polyval(p_ccw, Vc_mapped(i));
     else
         omega_final(i) = 0;   % 데드존 → omega = 0
@@ -264,6 +269,7 @@ fprintf('============================================================\n');
 fprintf('  피팅 방법  : WLS 1차 (가중 최소자승)\n');
 fprintf('  피팅 구간  : Vc 1.5~3.5V (저속 중립 근처)\n');
 fprintf('  epsilon    = %.3f,  n = %d\n', epsilon, n_w);
+fprintf('  omega_thresh = %.4f rad/s\n', omega_thresh);
 fprintf('------------------------------------------------------------\n');
 fprintf('  CW  피팅   : omega = %.4f * Vc + (%.4f)\n', p_cw(1),  p_cw(2));
 fprintf('  CCW 피팅   : omega = %.4f * Vc + (%.4f)\n', p_ccw(1), p_ccw(2));

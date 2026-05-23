@@ -30,16 +30,32 @@
 #define     TRI_VALIDATION      (4)
 
 // linearization --------------------> P_CW_A/B/C 이거 readibility 좋게 변수명 좀 바꿔주세요 -> 몇번째 자리 coeff인지 나타내는 변수이름이면 좋을듯
-#define K_LIN				    (double)(8.2988)        // <---- MODIFY!!
-#define COEFF_CW_A              (double)(-3.5463)        // <---- MODIFY!!
-#define COEFF_CW_B              (double)(37.8204)        // <---- MODIFY!!
-#define COEFF_CW_C              (double)(-77.1401)        // <---- MODIFY!!
-#define COEFF_CCW_A             (double)(2.9428)        // <---- MODIFY!!
-#define COEFF_CCW_B             (double)(3.9996)        // <---- MODIFY!!
-#define COEFF_CCW_C             (double)(-23.4824)        // <---- MODIFY!!
-#define DEAD_THRESH				(double)(0.5)
+#define K_LIN				    (double)( 4.8423)        // <---- MODIFY!!
+#define COEFF_CW_A              (double)( 0.9914  )        // <---- MODIFY!!
+#define COEFF_CW_B              (double)( 9.9482)        // <---- MODIFY!!
+#define COEFF_CW_C              (double)(-34.3477)        // <---- MODIFY!!
+#define COEFF_CCW_A             (double)( -1.0083)        // <---- MODIFY!!
+#define COEFF_CCW_B             (double)(19.3614)        // <---- MODIFY!!
+#define COEFF_CCW_C             (double)(-38.8792)        // <---- MODIFY!!
+#define DEAD_THRESH				(double)(0.2)
 
-#define DEAD_ZONE_LINEAR        (double)(4.612)        //dead zone linareze voltage
+#define DEAD_ZONE_LINEAR_CW        (double)(8.8496)        //dead zone linareze voltage
+#define DEAD_ZONE_LINEAR_CCW        (double)(8.9846)        //dead zone linareze voltage
+
+/* ============================================================
+ *  상수 정의 (MATLAB WLS 1차 피팅 결과로 채울 것)
+ * ============================================================ */
+#define COEFF_CW_SLOPE    ( 14.0195 )   /* CW  기울기  [rad/s per V] */
+#define COEFF_CW_INTCPT   ( -38.0255 )   /* CW  절편    [rad/s]       */
+#define COEFF_CCW_SLOPE   ( 13.2231  )   /* CCW 기울기  [rad/s per V] */
+#define COEFF_CCW_INTCPT  ( -30.2586 )   /* CCW 절편    [rad/s]       */
+
+//#define K_LIN             ( 9.4588)   /* 선형화 이득 [(rad/s)/V]   */
+//#define DEAD_THRESH       (0.1)                /* 데드존 omega 임계 [rad/s] */
+//#define VCMD_DEAD         (DEAD_THRESH / K_LIN)/* 데드존 Vcmd 임계 [V]      */
+//#define VC_DEAD_POS       (( 0.5 - COEFF_CW_INTCPT)  / COEFF_CW_SLOPE)   /* CW  데드존 경계 Vc */
+//#define VC_DEAD_NEG       ((-0.5 - COEFF_CCW_INTCPT) / COEFF_CCW_SLOPE)  /* CCW 데드존 경계 Vc */
+
 // motor sweep
 #define HOLD_TIME           (double)(4.0)
 #define N_HOLD              (int)(HOLD_TIME * SAMPLING_FREQ + 100)  
@@ -47,8 +63,8 @@
 
 
 #define TRI_AMP             (double)(1.0)
-#define TRI_PERIOD          (double)(5)
-#define TRI_CYCLES          (int)(20)
+#define TRI_PERIOD          (double)(40)
+#define TRI_CYCLES          (int)(5)
 #define TRI_T_TOTAL         (double)(TRI_PERIOD * TRI_CYCLES)       
 #define TRI_N_MAX           (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200) 
 
