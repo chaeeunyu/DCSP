@@ -10,7 +10,7 @@
 
 
 // basic macro
-#define		DAQ_DEV         "Dev8"
+#define		DAQ_DEV         "Dev3"
 #define		NEUTRAL			(float64)	(2.5)
 #define		ON				(float64)	(5.0)
 #define		OFF				(float64)	(0.0)
@@ -30,15 +30,15 @@
 #define     TRI_VALIDATION      (4)
 
 // linearization --------------------> P_CW_A/B/C 이거 readibility 좋게 변수명 좀 바꿔주세요 -> 몇번째 자리 coeff인지 나타내는 변수이름이면 좋을듯
-#define K_LIN				    (double)(8.3821)        // <---- MODIFY!!
-#define COEFF_CW_A              (double)(-3.2438)        // <---- MODIFY!!
-#define COEFF_CW_B              (double)(35.6313)        // <---- MODIFY!!
-#define COEFF_CW_C              (double)(-73.2675)        // <---- MODIFY!!
-#define COEFF_CW_C              (double)(-73.2675)        // <---- MODIFY!!
-#define COEFF_CCW_A             (double)(2.9253)        // <---- MODIFY!!
-#define COEFF_CCW_B             (double)(4.0052)        // <---- MODIFY!!
-#define COEFF_CCW_C             (double)(-23.6892)        // <---- MODIFY!!
+#define K_LIN				    (double)(8.2988)        // <---- MODIFY!!
+#define COEFF_CW_A              (double)(-3.5463)        // <---- MODIFY!!
+#define COEFF_CW_B              (double)(37.8204)        // <---- MODIFY!!
+#define COEFF_CW_C              (double)(-77.1401)        // <---- MODIFY!!
+#define COEFF_CCW_A             (double)(2.9428)        // <---- MODIFY!!
+#define COEFF_CCW_B             (double)(3.9996)        // <---- MODIFY!!
+#define COEFF_CCW_C             (double)(-23.4824)        // <---- MODIFY!!
 #define DEAD_THRESH				(double)(0.5)
+
 #define DEAD_ZONE_LINEAR        (double)(4.612)        //dead zone linareze voltage
 // motor sweep
 #define HOLD_TIME           (double)(4.0)
@@ -47,16 +47,16 @@
 
 
 #define TRI_AMP             (double)(1.0)
-#define TRI_PERIOD          (double)(40.0)
-#define TRI_CYCLES          (int)(5)
+#define TRI_PERIOD          (double)(5)
+#define TRI_CYCLES          (int)(20)
 #define TRI_T_TOTAL         (double)(TRI_PERIOD * TRI_CYCLES)       
 #define TRI_N_MAX           (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200) 
 
 
 #define SINE_AMP            (double)(1.0)
-#define SINE_FREQ           (double)(0.025)
+#define SINE_FREQ           (double)(0.2)
 #define SINE_PERIOD         (double)(1.0 / SINE_FREQ)
-#define SINE_CYCLES         (int)(5)
+#define SINE_CYCLES         (int)(20)
 #define SINE_T_TOTAL        (double)(SINE_PERIOD * SINE_CYCLES)      
 #define SINE_N_MAX          (int)(SINE_T_TOTAL * SAMPLING_FREQ + 200)
 #define SINE_CMD(t)         (SINE_AMP * sin(2.0 * UNIT_PI * SINE_FREQ * (t)))
@@ -74,5 +74,10 @@
 
 #define BUF_SIZE        (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
 
+//runstatcverify
+#define STATIC_VERIFY       (5)
+#define STATIC_AVG_TIME     (double)(2.0)
+#define STATIC_AVG_N        (int)(STATIC_AVG_TIME * SAMPLING_FREQ)  // 400
+#define STATIC_N_STEPS      (int)(51)
 
 #endif
