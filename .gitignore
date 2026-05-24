@@ -2,3 +2,4 @@
 *.exe
 *.pdb
 .vs/
+gimbal_control/.vs/
