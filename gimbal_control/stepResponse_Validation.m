@@ -4,10 +4,10 @@ Tf = 40.0;
 time = 0:Ts:Tf;
 num2 = 6083;
 den2 = [1 42.27 1166];
-num1 = 111.1;
-den1 = [1 17.25];
+num1 =  101.2;
+den1 = [1 14.53];
 f_in = 0.025;
-A = 2.5;
+A = 1.0;
 period = 1 / f_in;
 
 % 삼각파 생성
@@ -27,7 +27,7 @@ response = lsim(Gs, u, time);
 [step2, t_step] = step(Gs2, time);
 
 % 실측 데이터 로드 (헤더 7줄 스킵)
-data = readmatrix('Triangle_A1.0000_T40.0000_5cyc.out', 'FileType', 'text');
+data = readmatrix('triangle_verify_cycle_avg.out', 'FileType', 'text');
 t_meas        = data(8:end, 1);
 omega_target  = data(8:end, 3);
 omega_meas    = data(8:end, 4);

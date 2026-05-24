@@ -77,7 +77,6 @@ void RunStaticVerify(void);
 
 //void TEST_FREQS(void);
 void   RunBode(void); // c코드에서는 freq sweep (raw data)만 뽑고 DFT나 mag/phase 계산은 매트랩에서 하는게 더 쉬울 것 같아요
-void   ComputeGainPhase(double* vcmd_buf, double* omega_buf, int N, double freq, double dt, double* gain_out, double* phase_out);
 
 
 void main(void)
@@ -388,6 +387,40 @@ double Triangle_cmd(double t)
     else                   return  TRI_AMP * (4.0 * phase - 4.0);
 }
 
+//* ============================================================
+// *  InverseMap: Vcmd_ref → Vc  (WLS 1차 선형화)
+// * ============================================================ */
+//double InverseMap(double vcmd_ref)
+//{
+//    omega_target = K_LIN * vcmd_ref;
+//    double Vc = 2.5;
+//
+//    if (omega_target > DEAD_THRESH)
+//    {
+//        /* CW 구간: 1차 역함수  Vc = (omega - b) / a */
+//        Vc = (omega_target - COEFF_CW_INTCPT) / COEFF_CW_SLOPE;
+//    }
+//    else if (omega_target < -DEAD_THRESH)
+//    {
+//        /* CCW 구간: 1차 역함수  Vc = (omega - b) / a */
+//        Vc = (omega_target - COEFF_CCW_INTCPT) / COEFF_CCW_SLOPE;
+//    }
+//    else
+//    {
+//        /* 데드존: CCW 경계 → 중립(2.5V) → CW 경계 선형 보간
+//         * t ∈ [0,1] : vcmd_ref = -VCMD_DEAD → 0,  +VCMD_DEAD → 1        */
+//        double t = (vcmd_ref + VCMD_DEAD) / (2.0 * VCMD_DEAD);
+//        Vc = VC_DEAD_NEG + (VC_DEAD_POS - VC_DEAD_NEG) * t;
+//    }
+//
+//    /* 0~5V 클램핑 */
+//    if (Vc < 0.0) Vc = 0.0;
+//    if (Vc > 5.0) Vc = 5.0;
+//    return Vc;
+//}
+//
+
+
 double InverseMap(double vcmd_ref)
 {
     omega_target = K_LIN * vcmd_ref;
@@ -425,10 +458,15 @@ double InverseMap(double vcmd_ref)
             else                   Vc = 2.5;
         }
     }
-    else {
-		Vc = 2.5 + DEAD_ZONE_LINEAR * vcmd_ref; //deadzone linearization, comment from prof LLLAAAA
-    }
+	//else if   ( (omega_target < 0) && (omega_target > -DEAD_THRESH) )
+ //       Vc = 2.5 + DEAD_ZONE_LINEAR_CCW * vcmd_ref; //deadzone linearization, comment from prof LLLAAAA
+ //   
 
+ //   else 
+
+ //       Vc = 2.5 //+ DEAD_ZONE_LINEAR_CCW * vcmd_ref;
+
+    
     if (Vc < 0.0) Vc = 0.0;
     if (Vc > 5.0) Vc = 5.0;
     return Vc;
@@ -503,41 +541,6 @@ void RunWaveVerify(int mode)
 
     fclose(fp);
     printf("[Saved] %s  (%d samples)\n", filename, count);
-}
-// good 
-
-
-void ComputeGainPhase(double* vcmd_buf, double* omega_buf, int N, double freq, double dt, double* gain_out, double* phase_out)
-{
-    // initialize
-    double w = 2.0 * UNIT_PI * freq;
-    double re_x = 0.0, im_x = 0.0;
-    double re_y = 0.0, im_y = 0.0;
-    double t = 0.0;
-    double cos_wt = 0.0;
-    double sin_wt = 0.0;
-    double mag_x = 0.0;
-    double mag_y = 0.0;
-
-    for (int k = 0; k < N; k++) {
-        t = k * dt;
-        cos_wt = cos(w * t);
-        sin_wt = sin(w * t);
-        re_x += vcmd_buf[k] * cos_wt;
-        im_x -= vcmd_buf[k] * sin_wt;
-        re_y += omega_buf[k] * cos_wt;
-        im_y -= omega_buf[k] * sin_wt;
-    }
-    re_x *= (2.0 / N); im_x *= (2.0 / N);
-    re_y *= (2.0 / N); im_y *= (2.0 / N);
-
-    mag_x = sqrt(re_x * re_x + im_x * im_x);
-    mag_y = sqrt(re_y * re_y + im_y * im_y);
-
-    *gain_out = (mag_x > 1e-9) ? (mag_y / mag_x) : 0.0;
-    *phase_out = (atan2(im_y, re_y) - atan2(im_x, re_x)) * 180.0 / UNIT_PI;
-    while (*phase_out > 180.0) *phase_out -= 360.0;
-    while (*phase_out < -180.0) *phase_out += 360.0;
 }
 
 
