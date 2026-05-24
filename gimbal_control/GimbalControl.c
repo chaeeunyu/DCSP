@@ -76,7 +76,8 @@ void   RunWaveVerify(int mode);
 void RunStaticVerify(void);
 
 //void TEST_FREQS(void);
-void   RunBode(void); // c코드에서는 freq sweep (raw data)만 뽑고 DFT나 mag/phase 계산은 매트랩에서 하는게 더 쉬울 것 같아요
+void   RunBode(void);
+void RunStepResponse(void);
 
 
 void main(void)
@@ -106,6 +107,7 @@ void main(void)
         printf("  3. Sine Wave Verify\n");
         printf("  4. Triangle Wave Verify\n");
         printf("  5. Static Linearization Verify\n");
+        printf("  6. Step Response\n");
         printf("  0. Exit\n");
         printf("============================================================\n");
         printf("Select mode > ");
@@ -137,11 +139,15 @@ void main(void)
             RunStaticVerify();
             break;
 
+        case STEP_RESPONSE :
+            RunStepResponse();
+            break;
+
         default:
             printf("[Error] Invalid mode: %d\n", mode);
             break;
         }
-    } while (mode >= 1 && mode <= 4);
+    } while (mode >= 1 && mode <= 6);
 
 
     printf("[DAQ Cleaning up...]\n");
@@ -424,9 +430,9 @@ double Triangle_cmd(double t)
 double InverseMap(double vcmd_ref)
 {
     omega_target = K_LIN * vcmd_ref;
-    Vc = 2.5;
+    double Vc = 2.5;
 
-    if (omega_target > DEAD_THRESH)
+    if (vcmd_ref > VCMD_DEAD)
     {
         /* CW branch */
         double a = COEFF_CW_A, b = COEFF_CW_B, c = COEFF_CW_C - omega_target;
@@ -434,15 +440,18 @@ double InverseMap(double vcmd_ref)
         if (disc >= 0.0) {
             double r1 = (-b + sqrt(disc)) / (2.0 * a);
             double r2 = (-b - sqrt(disc)) / (2.0 * a);
-            int r1ok = (r1 >= 2.5) && (r1 <= 5.0);
-            int r2ok = (r2 >= 2.5) && (r2 <= 5.0);
+            int r1ok = (r1 >= VC_FIT_MIN) && (r1 <= VC_FIT_MAX);  // [1.5, 3.5]
+            int r2ok = (r2 >= VC_FIT_MIN) && (r2 <= VC_FIT_MAX);
             if (r1ok && r2ok) Vc = (r1 < r2) ? r1 : r2;
             else if (r1ok)         Vc = r1;
             else if (r2ok)         Vc = r2;
-            else                   Vc = 2.5;
+            else                   Vc = VC_FIT_MAX;  // fallback = 3.5 ← 수정
+        }
+        else {
+            Vc = VC_FIT_MAX;                          // disc < 0 fallback ← 수정
         }
     }
-    else if (omega_target < -DEAD_THRESH)
+    else if (vcmd_ref < -VCMD_DEAD)
     {
         /* CCW branch */
         double a = COEFF_CCW_A, b = COEFF_CCW_B, c = COEFF_CCW_C - omega_target;
@@ -450,28 +459,29 @@ double InverseMap(double vcmd_ref)
         if (disc >= 0.0) {
             double r1 = (-b + sqrt(disc)) / (2.0 * a);
             double r2 = (-b - sqrt(disc)) / (2.0 * a);
-            int r1ok = (r1 >= 0.0) && (r1 <= 2.5);
-            int r2ok = (r2 >= 0.0) && (r2 <= 2.5);
+            int r1ok = (r1 >= VC_FIT_MIN) && (r1 <= VC_FIT_MAX);  // [1.5, 3.5]
+            int r2ok = (r2 >= VC_FIT_MIN) && (r2 <= VC_FIT_MAX);
             if (r1ok && r2ok) Vc = (r1 < r2) ? r1 : r2;
             else if (r1ok)         Vc = r1;
             else if (r2ok)         Vc = r2;
-            else                   Vc = 2.5;
+            else                   Vc = VC_FIT_MIN;  // fallback = 1.5 ← 수정
+        }
+        else {
+            Vc = VC_FIT_MIN;                          // disc < 0 fallback ← 수정
         }
     }
-	//else if   ( (omega_target < 0) && (omega_target > -DEAD_THRESH) )
- //       Vc = 2.5 + DEAD_ZONE_LINEAR_CCW * vcmd_ref; //deadzone linearization, comment from prof LLLAAAA
- //   
+    //else
+    //{
+    //    double t = vcmd_ref / VCMD_DEAD;          // t ∈ [-1, +1]
+    //    Vc = (t >= 0.0) ? 2.5 + (VC_CW_BND - 2.5) * t
+    //        : 2.5 + (2.5 - VC_CCW_BND) * t;
+    //}
 
- //   else 
-
- //       Vc = 2.5 //+ DEAD_ZONE_LINEAR_CCW * vcmd_ref;
-
-    
-    if (Vc < 0.0) Vc = 0.0;
-    if (Vc > 5.0) Vc = 5.0;
+    /* 클램프: [1.5, 3.5] ← 수정 */
+    if (Vc < VC_FIT_MIN) Vc = VC_FIT_MIN;
+    if (Vc > VC_FIT_MAX) Vc = VC_FIT_MAX;
     return Vc;
 }
-
 void RunWaveVerify(int mode)
 {
     double T_total = 0.0;
@@ -579,8 +589,8 @@ void RunBode(void)
     do {
         freq_step[j] = freq_;
         j++;
-        freq_ = freq_ + 0.1;
-    } while (freq_ <= 5.5);
+        freq_ = freq_ + 0.05;
+    } while (freq_ <= 3.0);
 
     const char* outputDir = "bode_data";
     _mkdir(outputDir);
@@ -864,4 +874,118 @@ void RunStaticVerify(void)
         printf("\n[Summary] Saved : %s\n", sumname);
     }
     printf("[MODE 5 Done] Output folder: %s\n\n", outputDir);
+}
+
+
+void RunStepResponse(void)
+{
+    char filename[256];
+    int  savecount = 0;
+
+    const char* outputDir = "step_response_data";
+    _mkdir(outputDir);
+
+    /* ── 안내 출력 ─────────────────────────────────────────── */
+    printf("============================================================\n");
+    printf("  [MODE 6] Step Response\n");
+    printf("  Step input  : Vcmd = %+.4f V  (STEP_INPUT)\n", STEP_INPUT);
+    printf("  Settle time : %.1f s  (Keep neutral before Step Input...)\n", STEP_SETTLE_TIME);
+    printf("  Record time : %.1f s  (Time recorded after Step Input)\n", STEP_RECORD_TIME);
+    printf("  K_lin = %.4f  |  K_gimbal = %.4f\n", K_LIN, K_GIMBAL);
+    printf("============================================================\n\n");
+
+    printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
+    getchar();
+    GetAsyncKeyState(VK_SPACE);   /* 잔류 spacebar 제거 */
+
+    /* ── 1. Pre-step : neutral 안정화 ─────────────────────── */
+    memorySet();
+    motor_power(ON, NEUTRAL);
+    printf("[Settling] %.1f s at NEUTRAL...\n", STEP_SETTLE_TIME);
+    BusyWait_ms(STEP_SETTLE_TIME * 1000.0);
+
+    if (IsEmergencyStop()) {
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+        motor_power(ON, NEUTRAL);
+        return;
+    }
+
+    /* ── 2. 스텝 인가 ──────────────────────────────────────── */
+    Vcmd = STEP_INPUT;
+    Vc = InverseMap(Vcmd);           /* omega_target 갱신 포함 */
+    double omega_target_step = omega_target;   /* 스텝 구간 고정값 보존 */
+
+    printf("[Step] Applying Vcmd = %+.4f V  ->  Vc = %.4f V  "
+        "(omega_target = %+.4f rad/s)\n\n", Vcmd, Vc, omega_target_step);
+
+    motor_power(ON, Vc);
+    time_init = GetWindowTime();
+    time_elapsed = 0.0;
+    count = 0;
+
+    /* ── 3. 기록 루프 ──────────────────────────────────────── */
+    do {
+        /* Import_Data ------------------------------------ */
+        DAQ_ReadSample();
+        time_elapsed = (GetWindowTime() - time_init) * 0.001;
+
+        /* Export_Data : open-loop 스텝이므로 Vc 고정 출력 */
+        motor_power(ON, Vc);
+
+        /* 버퍼 저장 (루프 내 파일 쓰기 금지) */
+        if (count < BUF_SIZE) {
+            buftime[count] = time_elapsed;
+            bufVcmd[count] = Vcmd;
+            bufVc[count] = Vc;
+            bufVg[count] = Vg;
+            bufVpot[count] = Vpot;
+            bufomega[count] = omega;
+            bufomega_target[count] = omega_target_step;
+        }
+
+        /* 1 s 마다 진행 상황 출력 */
+        if (count % (int)SAMPLING_FREQ == 0)
+            printf("  [%5.2f / %.1f s]  omega = %+8.4f rad/s\n",
+                time_elapsed, STEP_RECORD_TIME, omega);
+
+        count++;
+
+        /* Time_Management */
+        WaitNextSample();
+
+    } while (!IsEmergencyStop() && (time_elapsed < STEP_RECORD_TIME));
+
+    /* ── 4. Neutral 복귀 ───────────────────────────────────── */
+    motor_power(ON, NEUTRAL);
+
+    if (IsEmergencyStop())
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+
+    /* ── 5. Data_Recording ─────────────────────────────────── */
+    savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
+
+    sprintf(filename, "%s/step_Vcmd%+.4f.out", outputDir, STEP_INPUT);
+    FILE* fp = fopen(filename, "w+t");
+    if (fp) {
+        fprintf(fp, "%% Step Response  Vcmd=%+.4fV  Vc=%.6fV\n", Vcmd, Vc);
+        fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  K_lin=%.6f\n",
+            Vg_offset, K_GIMBAL, K_LIN);
+        fprintf(fp, "%% omega_target=%.6f rad/s  "
+            "settle=%.1fs  record=%.1fs  samples=%d\n\n",
+            omega_target_step, STEP_SETTLE_TIME, STEP_RECORD_TIME, savecount);
+        fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
+            "Time[s]", "Vcmd[V]", "Vc[V]",
+            "Vg[V]", "Pot[V]", "Omega[rad/s]", "Omega_target[rad/s]");
+        for (int i = 0; i < savecount; i++)
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
+                buftime[i], bufVcmd[i], bufVc[i],
+                bufVg[i], bufVpot[i], bufomega[i], bufomega_target[i]);
+        fclose(fp);
+        printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
+    }
+    else {
+        printf("  !! File open failed: %s\n", filename);
+    }
+
+    printf("[MODE 6 Done] Output folder: %s\n\n", outputDir);
 }

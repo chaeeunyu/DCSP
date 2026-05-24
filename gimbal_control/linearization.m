@@ -88,9 +88,9 @@ set(gcf, 'Position', [100, 100, 900, 550]);
 %% ================================================================
 %  3. 유효 데이터 추출 (데드존 제외 + Vc 범위 제한)
 %% ================================================================
-om_thresh  = 0.2;   % ★ omega 임계값 (데드존 경계) — 여기만 바꾸면 전체 반영
-Vc_fit_min = 1.5;
-Vc_fit_max = 3.5;
+om_thresh  = 0.1;   % ★ omega 임계값 (데드존 경계) — 여기만 바꾸면 전체 반영
+Vc_fit_min = 4.0;
+Vc_fit_max = 1.0;
 
 valid_CW  = om_CW  >  om_thresh & Vc_CW  >= Vc_fit_min & Vc_CW  <= Vc_fit_max;
 valid_CCW = om_CCW < -om_thresh & Vc_CCW >= Vc_fit_min & Vc_CCW <= Vc_fit_max;
