@@ -28,56 +28,57 @@ x_ccw = linspace(-2.5, 0,   100)';
 
 %% ── 2. Figure : CW + CCW 한 plot ────────────────────────────────────
 figure(1); clf;
-tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
+% tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
 
 % ── 상단: 특성 곡선 + 기울기 ─────────────────────────────────────────
-nexttile;
+% nexttile;
 hold on; grid on; box on;
 
 % omega_target (점선)
-plot(Vcmd(cw),  omega_target(cw),  'r--', 'LineWidth',1.8, 'HandleVisibility','off');
-plot(Vcmd(ccw), omega_target(ccw), 'r--', 'LineWidth',1.8, 'DisplayName', ...
+plot(Vcmd(cw),  omega_target(cw)*180/pi,  'r--', 'LineWidth',1.8);
+plot(Vcmd(ccw), omega_target(ccw)*180/pi, 'r--', 'LineWidth',1.8, 'DisplayName', ...
      sprintf('\\omega_{target}  (slope = %.4f)', slope_target));
 
 % 실측 데이터 (마커)
-plot(Vcmd(cw),  omega_avg(cw),  'b.-', 'MarkerSize',11, 'LineWidth',1.2, 'HandleVisibility','off');
-plot(Vcmd(ccw), omega_avg(ccw), 'b.-', 'MarkerSize',11, 'LineWidth',1.2, 'HandleVisibility','off');
+plot(Vcmd(cw),  omega_avg(cw)*180/pi,  'g.', 'MarkerSize', 15, 'HandleVisibility','off');
+plot(Vcmd(ccw), omega_avg(ccw)*180/pi, 'g.', 'MarkerSize', 15);
 
 % 실측 회귀선 (실선)
-plot(x_cw,  slope_cw_meas  * x_cw,  'b-',  'LineWidth',2.0, 'DisplayName', ...
-     sprintf('\\omega_{meas} CW  fit  (slope = %.4f)', slope_cw_meas));
-plot(x_ccw, slope_ccw_meas * x_ccw, 'b--', 'LineWidth',2.0, 'DisplayName', ...
-     sprintf('\\omega_{meas} CCW fit  (slope = %.4f)', slope_ccw_meas));
+% plot(x_cw,  slope_cw_meas  * x_cw,  'b-',  'LineWidth',2.0, 'DisplayName', ...
+%      sprintf('\\omega_{meas} CW  fit  (slope = %.4f)', slope_cw_meas));
+% plot(x_ccw, slope_ccw_meas * x_ccw, 'b--', 'LineWidth',2.0, 'DisplayName', ...
+%      sprintf('\\omega_{meas} CCW fit  (slope = %.4f)', slope_ccw_meas));
 
 xline(0,'k:','LineWidth',1,'HandleVisibility','off');
 yline(0,'k:','LineWidth',1,'HandleVisibility','off');
 
 xlabel('V_{cmd} [V]',   'FontSize',12);
-ylabel('\omega [rad/s]', 'FontSize',12);
-title('Static Characteristic  –  CW & CCW', 'FontSize',13);
-legend('Location','northwest','FontSize',10);
+ylabel('\omega [deg/s]', 'FontSize',12);
+title('Static validation', 'FontSize',13);
+legend('omega_ target', '', 'measured');
+% legend('Location','northwest','FontSize',10);
 
 % 기울기 텍스트 박스
-str = sprintf('K_{lin}  = %.4f  (target)\nK_{CW}   = %.4f  (meas)\nK_{CCW}  = %.4f  (meas)', ...
-              slope_target, slope_cw_meas, slope_ccw_meas);
-text(0.02, 0.97, str, 'Units','normalized', 'VerticalAlignment','top', ...
-     'FontSize',10, 'FontName','FixedWidth', ...
-     'BackgroundColor','white', 'EdgeColor',[0.6 0.6 0.6]);
+% str = sprintf('K_{lin}  = %.4f  (target)\nK_{CW}   = %.4f  (meas)\nK_{CCW}  = %.4f  (meas)', ...
+%               slope_target, slope_cw_meas, slope_ccw_meas);
+% text(0.02, 0.97, str, 'Units','normalized', 'VerticalAlignment','top', ...
+%      'FontSize',10, 'FontName','FixedWidth', ...
+%      'BackgroundColor','white', 'EdgeColor',[0.6 0.6 0.6]);
 
 % ── 하단: 오차 ───────────────────────────────────────────────────────
-nexttile;
-hold on; grid on; box on;
-
-bar(Vcmd(cw),  err(cw),  'FaceColor',[0.25 0.55 0.9], 'EdgeColor','none', 'DisplayName','CW');
-bar(Vcmd(ccw), err(ccw), 'FaceColor',[0.95 0.45 0.1], 'EdgeColor','none', 'DisplayName','CCW');
-yline(0,'k-','LineWidth',1,'HandleVisibility','off');
-
-xlabel('V_{cmd} [V]',         'FontSize',12);
-ylabel('\Delta\omega [rad/s]', 'FontSize',12);
-title('\omega_{meas} - \omega_{target}  (Absolute Error)', 'FontSize',13);
-legend('Location','best','FontSize',10);
-
-sgtitle('Static Linearization Verify', 'FontSize',14,'FontWeight','bold');
+% nexttile;
+% hold on; grid on; box on;
+% 
+% bar(Vcmd(cw),  err(cw),  'FaceColor',[0.25 0.55 0.9], 'EdgeColor','none', 'DisplayName','CW');
+% bar(Vcmd(ccw), err(ccw), 'FaceColor',[0.95 0.45 0.1], 'EdgeColor','none', 'DisplayName','CCW');
+% yline(0,'k-','LineWidth',1,'HandleVisibility','off');
+% 
+% xlabel('V_{cmd} [V]',         'FontSize',12);
+% ylabel('\Delta\omega [rad/s]', 'FontSize',12);
+% title('\omega_{meas} - \omega_{target}  (Absolute Error)', 'FontSize',13);
+% legend('Location','best','FontSize',10);
+% 
+% sgtitle('Static Linearization Verify', 'FontSize',14,'FontWeight','bold');
 
 %% ── 3. 터미널 요약 ───────────────────────────────────────────────────
 fprintf('\n====================================================\n');

@@ -135,7 +135,7 @@ void main(void)
             RunWaveVerify(MODE_TRI);
             break;
 
-        case STATIC_VERIFY:
+        case STATIC_VALIDATION:
             RunStaticVerify();
             break;
 
@@ -359,7 +359,7 @@ void RunSweep(void)
         /* Save to file */
         if (count > 0) {
             sprintf(filename, "%s/step_%03d_V%.2f_%s.out", outputDir, step + 1, Vcmd, dir);
-            FILE* pFile = fopen(filename, "w+t");
+            FILE* pFile = fopen(filename, "w");
             if (pFile) {
                 fprintf(pFile, "%% Sweep Step %d/%d  Vcmd=%.4fV  %s \n", step + 1, N_STEPS_MAX, Vcmd, dir);
                 fprintf(pFile, "%% Vg_offset=%.6fV  K_gimbal=%.6f\n\n", Vg_offset, K_GIMBAL);
@@ -392,39 +392,6 @@ double Triangle_cmd(double t)
     else if (phase < 0.75) return  TRI_AMP * (2.0 - 4.0 * phase);
     else                   return  TRI_AMP * (4.0 * phase - 4.0);
 }
-
-//* ============================================================
-// *  InverseMap: Vcmd_ref → Vc  (WLS 1차 선형화)
-// * ============================================================ */
-//double InverseMap(double vcmd_ref)
-//{
-//    omega_target = K_LIN * vcmd_ref;
-//    double Vc = 2.5;
-//
-//    if (omega_target > DEAD_THRESH)
-//    {
-//        /* CW 구간: 1차 역함수  Vc = (omega - b) / a */
-//        Vc = (omega_target - COEFF_CW_INTCPT) / COEFF_CW_SLOPE;
-//    }
-//    else if (omega_target < -DEAD_THRESH)
-//    {
-//        /* CCW 구간: 1차 역함수  Vc = (omega - b) / a */
-//        Vc = (omega_target - COEFF_CCW_INTCPT) / COEFF_CCW_SLOPE;
-//    }
-//    else
-//    {
-//        /* 데드존: CCW 경계 → 중립(2.5V) → CW 경계 선형 보간
-//         * t ∈ [0,1] : vcmd_ref = -VCMD_DEAD → 0,  +VCMD_DEAD → 1        */
-//        double t = (vcmd_ref + VCMD_DEAD) / (2.0 * VCMD_DEAD);
-//        Vc = VC_DEAD_NEG + (VC_DEAD_POS - VC_DEAD_NEG) * t;
-//    }
-//
-//    /* 0~5V 클램핑 */
-//    if (Vc < 0.0) Vc = 0.0;
-//    if (Vc > 5.0) Vc = 5.0;
-//    return Vc;
-//}
-//
 
 
 double InverseMap(double vcmd_ref)
@@ -564,17 +531,6 @@ void memorySet_bode(void) {
     memset(bode_omega_target, 0, sizeof(bode_omega_target));
 }
 
-//void TEST_FREQS(void) {
-//    int i = 0;
-//    double vcmd = 0.0;
-//    double Vinput[N_FREQS] = { 0.0 };
-//    do {
-//        Vinput[i] = vcmd;
-//        i++;
-//        vcmd = vcmd + 0.1;
-//    } while (vcmd <= 5.5);
-//}
-
 
 void RunBode(void)
 {
@@ -599,7 +555,7 @@ void RunBode(void)
     printf("============================================================\n");
     printf("  [MODE 4] Frequency Response (Bode Plot)\n");
     printf("  Sine amplitude : %.2f V  (Vcmd)\n", BODE_SINE_AMP);
-    printf("  Frequencies    : %d points  (0.1 ~ 15 Hz)\n", N_FREQS);
+    printf("  Frequencies    : %d points  (0.1 ~ 3.0 Hz)\n", N_FREQS);
     printf("  Estimated time : ~%.0f sec (%.1f min)\n", total_est, total_est / 60.0);
     printf("============================================================\n\n");
     printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
@@ -687,22 +643,26 @@ void RunBode(void)
     printf("\n[MODE 4 Done] Output folder: %s\n\n", outputDir);
 }
 
+
+
 void RunStaticVerify(void)
 {
-    /* ── 0. Vcmd 시퀀스 생성 ─────────────────────────────────
-     *  0.0, +0.1, -0.1, +0.2, -0.2, ..., +2.5, -2.5
-     *  총 1 + 25*2 = 51 스텝
-     * ──────────────────────────────────────────────────── */
-    double static_vcmd[STATIC_N_STEPS];
+    double static_vcmd[STATIC_N_STEPS] = { 0.0 };
     int    n_static = 0;
+    double omega_target_step = 0.0;
+    int savecount = 0;
+    int avg_start = 0;
+    int avg_n = 0;
+    double omega_sum = 0.0;
+    double Vc_sum = 0.0;
+    double omega_avg = 0.0;
+    double Vc_avg = 0.0;
 
-    static_vcmd[n_static++] = 0.0;
     for (double v = 0.1; v <= 2.5 + 1e-9; v += 0.1) {
         static_vcmd[n_static++] = v;
         static_vcmd[n_static++] = -v;
     }   /* n_static == 51 */
 
-    /* ── 1. 출력 디렉토리 & 요약 파일 준비 ─────────────────── */
     const char* outputDir = "static_verify_data";
     _mkdir(outputDir);
 
@@ -725,7 +685,6 @@ void RunStaticVerify(void)
         printf("  !! Summary file open failed: %s\n", sumname);
     }
 
-    /* ── 2. 안내 출력 ─────────────────────────────────────── */
     printf("============================================================\n");
     printf("  [MODE 5] Static Linearization Verify (%d steps)\n", n_static);
     printf("  Vcmd : 0, +0.1, -0.1, ..., +2.5, -2.5\n");
@@ -736,21 +695,21 @@ void RunStaticVerify(void)
 
     printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
     getchar();
-    GetAsyncKeyState(VK_SPACE);   /* 잔류 spacebar 입력 제거 */
+    GetAsyncKeyState(VK_SPACE);  
 
-    /* ── 3. Program_Initialization ───────────────────────── */
+    
+    // initialize motor
     motor_power(ON, NEUTRAL);
 
-    /* ── 4. 스텝 루프 ────────────────────────────────────── */
+    // step loop
     for (int step = 0; step < n_static && !IsEmergencyStop(); step++)
     {
-        /* --- 스텝 초기화 ---------------------------------- */
         memorySet();
 
         Vcmd = static_vcmd[step];
-        Vc = InverseMap(Vcmd);   /* omega_target 도 여기서 갱신됨 */
+        Vc = InverseMap(Vcmd); 
 
-        double omega_target_step = omega_target;   /* 스텝별 고정값 보존 */
+        omega_target_step = omega_target;  
 
         time_init = GetWindowTime();
         time_elapsed = 0.0;
@@ -761,22 +720,12 @@ void RunStaticVerify(void)
             "Vc = %.4f V  omega_target = %+.4f rad/s\n",
             step + 1, n_static, Vcmd, Vc, omega_target_step);
 
-        /* ── do-while : 이미지 구조 그대로 ─────────────────
-         *   Import_Data  →  Digital_Controller
-         *   →  Export_Data  →  Time_Management
-         * ─────────────────────────────────────────────── */
         do {
-            /* Import_Data -------------------------------- */
             DAQ_ReadSample();
             time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
-            /* Digital_Controller ------------------------ */
-            /* 정적 검증: Vcmd 고정 → Vc 고정, 추가 연산 없음  */
-
-            /* Export_Data -------------------------------- */
             motor_power(ON, Vc);
 
-            /* 버퍼 저장 (루프 내 파일 쓰기 금지 – 이미지 규칙) */
             if (count < N_HOLD) {
                 buftime[count] = time_elapsed;
                 bufVcmd[count] = Vcmd;
@@ -788,35 +737,29 @@ void RunStaticVerify(void)
             }
 
             count++;
-
-            /* Time_Management --------------------------- */
             WaitNextSample();
 
         } while (!IsEmergencyStop() && (time_elapsed < HOLD_TIME));
-        /* Check_Stop_Condition : 비상정지 OR 시간 종료 */
 
-        /* ── Data_Recording (루프 밖) ──────────────────────
-         *  마지막 STATIC_AVG_TIME 구간 omega 평균 계산
-         * ─────────────────────────────────────────────── */
-        int savecount = (count < N_HOLD) ? count : N_HOLD;
-        int avg_start = savecount - STATIC_AVG_N;
+        // prevent buffer overflow
+        savecount = (count < N_HOLD) ? count : N_HOLD;
+        // get the last part of data (steady-state)
+        avg_start = savecount - STATIC_AVG_N;
         if (avg_start < 0) avg_start = 0;
-        int avg_n = savecount - avg_start;
+        avg_n = savecount - avg_start;
 
-        double omega_sum = 0.0;
-        double Vc_sum = 0.0;
         for (int i = avg_start; i < savecount; i++) {
             omega_sum += bufomega[i];
             Vc_sum += bufVc[i];
         }
-        double omega_avg = (avg_n > 0) ? omega_sum / avg_n : 0.0;
-        double Vc_avg = (avg_n > 0) ? Vc_sum / avg_n : Vc;
+        omega_avg = (avg_n > 0) ? omega_sum / avg_n : 0.0;
+        Vc_avg = (avg_n > 0) ? Vc_sum / avg_n : Vc;
 
         printf("  -> omega_avg = %+.4f rad/s  "
             "(last %.1f s, %d samples)\n",
             omega_avg, STATIC_AVG_TIME, avg_n);
 
-        /* per-step raw 파일 저장 */
+        // save raw files
         char filename[256];
         sprintf(filename, "%s/step_%03d_Vcmd%+.2f.out",
             outputDir, step + 1, Vcmd);
@@ -850,20 +793,17 @@ void RunStaticVerify(void)
         else {
             printf("  !! File open failed: %s\n", filename);
         }
-
-        /* 요약 파일에 한 줄 추가 */
         if (fpSum)
             fprintf(fpSum, "%-5d %20.10f %20.10f %20.10f %20.10f\n",
                 step + 1, Vcmd, Vc_avg, omega_avg, omega_target_step);
 
-        /* ── Program_Termination (스텝 간) ──────────────── */
+        // close, turn OFF motor
         if (!IsEmergencyStop() && step < n_static - 1) {
             motor_power(ON, NEUTRAL);
             BusyWait_ms(1000.0);
         }
-    }   /* end for step */
+    }  // end for
 
-    /* ── 5. Program_Termination ──────────────────────────── */
     if (IsEmergencyStop())
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
@@ -877,15 +817,16 @@ void RunStaticVerify(void)
 }
 
 
+// step response
 void RunStepResponse(void)
 {
     char filename[256];
     int  savecount = 0;
+    double omega_target_step = 0.0;
 
     const char* outputDir = "step_response_data";
     _mkdir(outputDir);
 
-    /* ── 안내 출력 ─────────────────────────────────────────── */
     printf("============================================================\n");
     printf("  [MODE 6] Step Response\n");
     printf("  Step input  : Vcmd = %+.4f V  (STEP_INPUT)\n", STEP_INPUT);
@@ -896,9 +837,9 @@ void RunStepResponse(void)
 
     printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
     getchar();
-    GetAsyncKeyState(VK_SPACE);   /* 잔류 spacebar 제거 */
+    GetAsyncKeyState(VK_SPACE); 
 
-    /* ── 1. Pre-step : neutral 안정화 ─────────────────────── */
+    // initialize
     memorySet();
     motor_power(ON, NEUTRAL);
     printf("[Settling] %.1f s at NEUTRAL...\n", STEP_SETTLE_TIME);
@@ -910,10 +851,10 @@ void RunStepResponse(void)
         return;
     }
 
-    /* ── 2. 스텝 인가 ──────────────────────────────────────── */
+    // apply voltage
     Vcmd = STEP_INPUT;
-    Vc = InverseMap(Vcmd);           /* omega_target 갱신 포함 */
-    double omega_target_step = omega_target;   /* 스텝 구간 고정값 보존 */
+    Vc = InverseMap(Vcmd);         
+    omega_target_step = omega_target;  
 
     printf("[Step] Applying Vcmd = %+.4f V  ->  Vc = %.4f V  "
         "(omega_target = %+.4f rad/s)\n\n", Vcmd, Vc, omega_target_step);
@@ -923,16 +864,12 @@ void RunStepResponse(void)
     time_elapsed = 0.0;
     count = 0;
 
-    /* ── 3. 기록 루프 ──────────────────────────────────────── */
     do {
-        /* Import_Data ------------------------------------ */
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
-        /* Export_Data : open-loop 스텝이므로 Vc 고정 출력 */
         motor_power(ON, Vc);
 
-        /* 버퍼 저장 (루프 내 파일 쓰기 금지) */
         if (count < BUF_SIZE) {
             buftime[count] = time_elapsed;
             bufVcmd[count] = Vcmd;
@@ -943,25 +880,20 @@ void RunStepResponse(void)
             bufomega_target[count] = omega_target_step;
         }
 
-        /* 1 s 마다 진행 상황 출력 */
         if (count % (int)SAMPLING_FREQ == 0)
             printf("  [%5.2f / %.1f s]  omega = %+8.4f rad/s\n",
                 time_elapsed, STEP_RECORD_TIME, omega);
 
         count++;
-
-        /* Time_Management */
         WaitNextSample();
 
     } while (!IsEmergencyStop() && (time_elapsed < STEP_RECORD_TIME));
 
-    /* ── 4. Neutral 복귀 ───────────────────────────────────── */
     motor_power(ON, NEUTRAL);
 
     if (IsEmergencyStop())
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
-    /* ── 5. Data_Recording ─────────────────────────────────── */
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
 
     sprintf(filename, "%s/step_Vcmd%+.4f.out", outputDir, STEP_INPUT);

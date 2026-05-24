@@ -1,3 +1,5 @@
+clear; close all; clc;
+
 D = readmatrix('tri_A5.0_F0.0250.out', ...
                'FileType','text', 'NumHeaderLines', 2);
 t      = D(:,1);
@@ -23,40 +25,64 @@ om_avg     = mean(om_m,     2);
 
 t_one = (0 : N_per-1).' / Fs;   % 0 ~ 39.995 sec
 
+% ------------ simulation ----------------
+num = [70.96];
+den = [1 14.7];
+
+% input
+A = 2.0; % magnitude [V]
+freq = 0.025; % [Hz]
+
+dt = 0.005; % sampling period
+Tf = 40 ;
+
+t = 0:dt:Tf ;
+u = A * (2/pi) * asin(sin(2*pi*freq*t));
+
+sys = tf(num, den);
+
+y = lsim(sys, u, t);
+
+
 %% 플롯
 figure;
 subplot(2,1,1);
 plot(t_one, vcmd_avg, 'b', 'LineWidth', 1.2);
 ylabel('Vcmd_{ref} [V]');
-title(sprintf('주기 평균', N_cyc));
+title('주기 평균 (Vcmd=2[V], f=0.025[Hz])');
 grid on;
 
-subplot(2,1,2); hold on;
-plot(t_one, om_tgt_avg, 'k--', 'LineWidth', 1.2, 'DisplayName', 'Target \omega (avg)');
-plot(t_one, om_avg,     'r',   'LineWidth', 1.2, 'DisplayName', 'Measured \omega (avg)');
-ylabel('\omega [rad/s]'); xlabel('Time [s]');
+% subplot(2,1,2); 
+figure(2);
+hold on;
+plot(t_one, om_tgt_avg*180/pi, 'k--', 'LineWidth', 1.2, 'DisplayName', 'Target \omega (avg)');
+plot(t_one, om_avg*180/pi,     'r',   'LineWidth', 1.2, 'DisplayName', 'Measured \omega (avg)');
+plot(t, y*180/pi, 'g', 'LineWidth', 1.5, 'DisplayName', 'Simulation \omega');
+title('주기 평균 (Vcmd=2[V], f=0.025[Hz])');
+ylabel('\omega [deg/s]'); xlabel('Time [s]');
 legend; grid on;
 
-%% 결과 텍스트 파일 저장
-out_file = 'triangle_verify_cycle_avg.out';   % 현재 폴더에 바로 저장
+% %% 결과 텍스트 파일 저장
+% out_file = 'triangle_verify_cycle_avg.out';   % 현재 폴더에 바로 저장
+% 
+% fid = fopen(out_file, 'w');
+% if fid == -1
+%     error('파일 열기 실패: %s', out_file);
+% end
+% 
+% fprintf(fid, '%% Motor Triangle Wave Linearization Verification - Cycle Average\n');
+% fprintf(fid, '%% Period      = %.1f [sec]\n', T);
+% fprintf(fid, '%% Cycles used = %d\n', N_cyc);
+% fprintf(fid, '%% Fs          = %d [Hz]\n', Fs);
+% fprintf(fid, '%% N per cycle = %d\n\n', N_per);
+% fprintf(fid, '%-20s %-20s %-20s %-20s\n', ...
+%     'Time[s]', 'Vcmd_ref_avg[V]', 'Omega_target_avg[rad/s]', 'Omega_avg[rad/s]');
+% 
+% for i = 1 : N_per
+%     fprintf(fid, '%-20.10f %-20.10f %-20.10f %-20.10f\n', ...
+%         t_one(i), vcmd_avg(i), om_tgt_avg(i), om_avg(i));
+% end
+% 
+% fclose(fid);
+% fprintf('저장 완료: %s  (%d rows)\n', out_file, N_per);
 
-fid = fopen(out_file, 'w');
-if fid == -1
-    error('파일 열기 실패: %s', out_file);
-end
-
-fprintf(fid, '%% Motor Triangle Wave Linearization Verification - Cycle Average\n');
-fprintf(fid, '%% Period      = %.1f [sec]\n', T);
-fprintf(fid, '%% Cycles used = %d\n', N_cyc);
-fprintf(fid, '%% Fs          = %d [Hz]\n', Fs);
-fprintf(fid, '%% N per cycle = %d\n\n', N_per);
-fprintf(fid, '%-20s %-20s %-20s %-20s\n', ...
-    'Time[s]', 'Vcmd_ref_avg[V]', 'Omega_target_avg[rad/s]', 'Omega_avg[rad/s]');
-
-for i = 1 : N_per
-    fprintf(fid, '%-20.10f %-20.10f %-20.10f %-20.10f\n', ...
-        t_one(i), vcmd_avg(i), om_tgt_avg(i), om_avg(i));
-end
-
-fclose(fid);
-fprintf('저장 완료: %s  (%d rows)\n', out_file, N_per);
