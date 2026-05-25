@@ -1,3 +1,5 @@
+clear; close all; clc;
+
 D = readmatrix('sine_A2.00_F0.0250.out', ...
                'FileType','text', 'NumHeaderLines', 2);
 t      = D(:,1);
@@ -23,18 +25,42 @@ om_avg     = mean(om_m,     2);
 
 t_one = (0 : N_per-1).' / Fs;   % 0 ~ 39.995 sec
 
+% ------------ simulation ----------------
+num = [70.96];
+den = [1 14.7];
+
+% input
+A = 2.0; % magnitude [V]
+freq = 0.025; % [Hz]
+
+dt = 0.005; % sampling period
+Tf = 40 ;
+
+t = 0:dt:Tf ;
+u = A*sin(2*pi*freq*t) ;
+
+sys = tf(num, den);
+
+y = lsim(sys, u, t);
+
+
+
 %% 플롯
 figure;
 subplot(2,1,1);
 plot(t_one, vcmd_avg, 'b', 'LineWidth', 1.2);
 ylabel('Vcmd_{ref} [V]');
-title(sprintf('주기 평균', N_cyc));
+title('주기 평균 (Vcmd=2.0[V], f=0.025[Hz])');
 grid on;
 
-subplot(2,1,2); hold on;
-plot(t_one, om_tgt_avg, 'k--', 'LineWidth', 1.2, 'DisplayName', 'Target \omega (avg)');
-plot(t_one, om_avg,     'r',   'LineWidth', 1.2, 'DisplayName', 'Measured \omega (avg)');
-ylabel('\omega [rad/s]'); xlabel('Time [s]');
+% subplot(2,1,2); 
+figure(2);
+hold on;
+plot(t_one, om_tgt_avg*180/pi, 'k--', 'LineWidth', 1.2, 'DisplayName', 'Target \omega (avg)');
+plot(t_one, om_avg*180/pi,     'r',   'LineWidth', 1.2, 'DisplayName', 'Measured \omega (avg)');
+plot(t, y*180/pi, 'g', 'LineWidth', 1.5, 'DisplayName', 'Simulation \omega (avg)');
+title('주기 평균 (Vcmd=2.0[V], f=0.025[Hz])');
+ylabel('\omega [deg/s]'); xlabel('Time [s]');
 legend; grid on;
 
 %% 결과 텍스트 파일 저장
