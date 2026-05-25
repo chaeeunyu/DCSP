@@ -449,6 +449,8 @@ double InverseMap(double vcmd_ref)
     if (Vc > VC_FIT_MAX) Vc = VC_FIT_MAX;
     return Vc;
 }
+
+
 void RunWaveVerify(int mode)
 {
     double T_total = 0.0;
@@ -545,8 +547,8 @@ void RunBode(void)
     do {
         freq_step[j] = freq_;
         j++;
-        freq_ = freq_ + 0.05;
-    } while (freq_ <= 3.0);
+        freq_ = freq_ + 0.1;
+    } while (freq_ <= 5.0);
 
     const char* outputDir = "bode_data";
     _mkdir(outputDir);

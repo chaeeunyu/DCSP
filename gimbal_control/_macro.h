@@ -10,7 +10,7 @@
 
 
 // basic macro
-#define		DAQ_DEV         "Dev3"
+#define		DAQ_DEV         "Dev8"
 #define		NEUTRAL			(float64)	(2.5)
 #define		ON				(float64)	(5.0)
 #define		OFF				(float64)	(0.0)
@@ -32,13 +32,13 @@
 #define		STEP_RESPONSE       (6)
 
 // linearization 
-#define K_LIN				    (double)(   4.9596)        // <---- MODIFY!!
-#define COEFF_CW_A              (double)( -0.0991 )        // <---- MODIFY!!
-#define COEFF_CW_B              (double)( 16.4033 )        // <---- MODIFY!!
-#define COEFF_CW_C              (double)(-43.7992)        // <---- MODIFY!!
-#define COEFF_CCW_A             (double)( -1.5739)        // <---- MODIFY!!
-#define COEFF_CCW_B             (double)(20.5965)        // <---- MODIFY!!
-#define COEFF_CCW_C             (double)(-38.8920)		//<---- MODIFY!!
+#define K_LIN				    (double)(5.7412)        // <---- MODIFY!!
+#define COEFF_CW_A              (double)(1.4501)        // <---- MODIFY!!
+#define COEFF_CW_B              (double)( 9.1093 )        // <---- MODIFY!!
+#define COEFF_CW_C              (double)(-35.1953)        // <---- MODIFY!!
+#define COEFF_CCW_A             (double)(1.6606)        // <---- MODIFY!!
+#define COEFF_CCW_B             (double)(12.3575)        // <---- MODIFY!!
+#define COEFF_CCW_C             (double)(-36.6257)		//<---- MODIFY!!
 
 #define VCMD_DEAD				(double)(0.05)
 #define DEAD_THRESH				(double)(K_LIN * VCMD_DEAD)
@@ -57,16 +57,16 @@
 
 
 // dynamic validation
-#define TRI_AMP             (double)(2)
+#define TRI_AMP             (double)(1.5)
 #define TRI_PERIOD          (double)(40)
-#define TRI_CYCLES          (int)(3)
+#define TRI_CYCLES          (int)(5)
 #define TRI_T_TOTAL         (double)(TRI_PERIOD * TRI_CYCLES)       
 #define TRI_N_MAX           (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200) 
 
-#define SINE_AMP            (double)(2.0)
+#define SINE_AMP            (double)(1.5)
 #define SINE_FREQ           (double)(0.025)
 #define SINE_PERIOD         (double)(1.0 / SINE_FREQ)
-#define SINE_CYCLES         (int)(10)
+#define SINE_CYCLES         (int)(5)
 #define SINE_T_TOTAL        (double)(SINE_PERIOD * SINE_CYCLES)      
 #define SINE_N_MAX          (int)(SINE_T_TOTAL * SAMPLING_FREQ + 200)
 #define SINE_CMD(t)         (SINE_AMP * sin(2.0 * UNIT_PI * SINE_FREQ * (t)))
@@ -78,8 +78,8 @@
 
 
 // run bode
-#define BODE_SINE_AMP       (double)(2.0)
-#define N_FREQS             (60)
+#define BODE_SINE_AMP       (double)(1.5)
+#define N_FREQS             (50)
 #define N_SKIP_CYCLES       (int)(1)
 #define N_CYCLES			(int)(5)
 
@@ -91,7 +91,7 @@
 #define STATIC_N_STEPS      (int)(51)
 
 // step response
-#define STEP_INPUT              (double)(2.0)    // <---- MODIFY: Vcmd [V]
+#define STEP_INPUT              (double)(1.5)    // <---- MODIFY: Vcmd [V]
 #define STEP_SETTLE_TIME        (double)(2.0)   
 #define STEP_RECORD_TIME        (double)(5.0)    
 

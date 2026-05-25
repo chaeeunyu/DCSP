@@ -15,7 +15,7 @@ tblFreqResp = tblMagLin .* exp(1j * tblPhsDelay);
 wt= 1 ./(abs(tblOmega) * eps);
 
 Nnum = 0;
-Nden = 1;
+Nden = 2;
 [num, den] = invfreqs(tblFreqResp, tblOmega, Nnum, Nden, wt);
 EstTF = tf(num, den);
 figure; pzmap(EstTF); grid on;

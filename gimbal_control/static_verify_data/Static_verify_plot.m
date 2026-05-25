@@ -31,7 +31,7 @@ figure(1); clf;
 % tiledlayout(2,1,'TileSpacing','compact','Padding','compact');
 
 % ── 상단: 특성 곡선 + 기울기 ─────────────────────────────────────────
-% nexttile;
+ nexttile;
 hold on; grid on; box on;
 
 % omega_target (점선)
@@ -66,19 +66,19 @@ legend('omega_ target', '', 'measured');
 %      'BackgroundColor','white', 'EdgeColor',[0.6 0.6 0.6]);
 
 % ── 하단: 오차 ───────────────────────────────────────────────────────
-% nexttile;
-% hold on; grid on; box on;
-% 
-% bar(Vcmd(cw),  err(cw),  'FaceColor',[0.25 0.55 0.9], 'EdgeColor','none', 'DisplayName','CW');
-% bar(Vcmd(ccw), err(ccw), 'FaceColor',[0.95 0.45 0.1], 'EdgeColor','none', 'DisplayName','CCW');
-% yline(0,'k-','LineWidth',1,'HandleVisibility','off');
-% 
-% xlabel('V_{cmd} [V]',         'FontSize',12);
-% ylabel('\Delta\omega [rad/s]', 'FontSize',12);
-% title('\omega_{meas} - \omega_{target}  (Absolute Error)', 'FontSize',13);
-% legend('Location','best','FontSize',10);
-% 
-% sgtitle('Static Linearization Verify', 'FontSize',14,'FontWeight','bold');
+nexttile;
+hold on; grid on; box on;
+
+bar(Vcmd(cw),  err(cw)*180/pi,  'FaceColor',[0.25 0.55 0.9], 'EdgeColor','none', 'DisplayName','CW');
+bar(Vcmd(ccw), err(ccw)*180/pi, 'FaceColor',[0.95 0.45 0.1], 'EdgeColor','none', 'DisplayName','CCW');
+yline(0,'k-','LineWidth',1,'HandleVisibility','off');
+
+xlabel('V_{cmd} [V]',         'FontSize',12);
+ylabel('\Delta\omega [deg/s]', 'FontSize',12);
+title('\omega_{meas} - \omega_{target}  (Absolute Error)', 'FontSize',13);
+legend('Location','best','FontSize',10);
+
+sgtitle('Static Linearization Verify', 'FontSize',14,'FontWeight','bold');
 
 %% ── 3. 터미널 요약 ───────────────────────────────────────────────────
 fprintf('\n====================================================\n');

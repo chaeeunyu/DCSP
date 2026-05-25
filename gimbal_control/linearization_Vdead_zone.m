@@ -53,7 +53,7 @@ valid_CCW = om_CCW < -om_fit_thresh & Vc_CCW >= Vc_fit_min & Vc_CCW <= Vc_fit_ma
 p_cw  = polyfit(Vc_CW(valid_CW),   om_CW(valid_CW),   2);
 p_ccw = polyfit(Vc_CCW(valid_CCW), om_CCW(valid_CCW), 2);
 
-omega_sat = max( abs(polyval(p_cw, Vc_fit_max)), abs(polyval(p_ccw, Vc_fit_min)) );
+omega_sat = min( abs(polyval(p_cw, Vc_fit_max)), abs(polyval(p_ccw, Vc_fit_min)) );
 K = omega_sat / Vcmd_max;
 
 fprintf('[CW  피팅] %.4f*Vc^2 + %.4f*Vc + %.4f\n', p_cw(1),  p_cw(2),  p_cw(3));
