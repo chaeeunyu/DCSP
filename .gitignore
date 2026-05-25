@@ -3,3 +3,7 @@
 *.pdb
 .vs/
 gimbal_control/.vs/
+*.suo
+*.VC.db
+*.VC.VC.opendb
+ipch/
