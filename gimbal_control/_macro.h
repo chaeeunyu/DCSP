@@ -10,7 +10,7 @@
 
 
 // basic macro
-#define		DAQ_DEV         "Dev8"
+#define		DAQ_DEV         "Dev3"
 #define		NEUTRAL			(float64)	(2.5)
 #define		ON				(float64)	(5.0)
 #define		OFF				(float64)	(0.0)
@@ -20,7 +20,7 @@
 #define     K_GIMBAL        (double)    (1000.0 / 0.67 * UNIT_PI / 180.0)
 #define     N_BIAS          (int)       (200)
 
-#define		READ_DATA(arr)	DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL);
+#define		READ_DATA(arr)	DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL)
 
 // switch macro
 #define     EXIT                (0)
@@ -31,24 +31,24 @@
 #define		STATIC_VALIDATION   (5)
 #define		STEP_RESPONSE       (6)
 
-// linearization 
-#define K_LIN				    (double)(5.7412)        // <---- MODIFY!!
-#define COEFF_CW_A              (double)(1.4501)        // <---- MODIFY!!
-#define COEFF_CW_B              (double)( 9.1093 )        // <---- MODIFY!!
-#define COEFF_CW_C              (double)(-35.1953)        // <---- MODIFY!!
-#define COEFF_CCW_A             (double)(1.6606)        // <---- MODIFY!!
-#define COEFF_CCW_B             (double)(12.3575)        // <---- MODIFY!!
-#define COEFF_CCW_C             (double)(-36.6257)		//<---- MODIFY!!
+// ── 신규 추가 ──────────────────────────────────────────────
+// K_LIN 제거: 입력이 Vcmd[V] 대신 omega_c[deg/s]로 변경되어 불필요
 
-#define VCMD_DEAD				(double)(0.05)
-#define DEAD_THRESH				(double)(K_LIN * VCMD_DEAD)
+/* CW  4차 다항식: Vc = f(omega_deg)  <---- MODIFY after MATLAB polyfit */
+#define CW_C4   (double)(+3.989784e-13)
+#define CW_C3   (double)(+7.448897e-11)
+#define CW_C2   (double)(-4.677239e-07)
+#define CW_C1   (double)(+1.261769e-03)
+#define CW_C0   (double)(+2.693027e+00)
 
-#define VC_FIT_MIN				(double)( 1.5 )
-#define VC_FIT_MAX				(double)( 3.5 )
-
-#define VC_CW_BND   ((-COEFF_CW_B  + sqrt(COEFF_CW_B *COEFF_CW_B  - 4.0*COEFF_CW_A *(COEFF_CW_C  - K_LIN*VCMD_DEAD ))) / (2.0*COEFF_CW_A ))
-#define VC_CCW_BND  ((-COEFF_CCW_B + sqrt(COEFF_CCW_B*COEFF_CCW_B - 4.0*COEFF_CCW_A*(COEFF_CCW_C - K_LIN*(-VCMD_DEAD)))) / (2.0*COEFF_CCW_A))
-
+/* CCW */
+#define CCW_C4  (double)(+7.466100e-14)
+#define CCW_C3  (double)(+1.136119e-09)
+#define CCW_C2  (double)(+1.220581e-06)
+#define CCW_C1  (double)(+1.514228e-03)
+#define CCW_C0  (double)(+2.306548e+00)
+#define WC_DZ       (double)(20.0)       /* 데드존 경계 [deg/s]  */
+#define WC_SAT      (double)(1400.0)     /* 포화 속도   [deg/s]  */
 
 // motor sweep
 #define HOLD_TIME           (double)(4.0)
@@ -56,20 +56,20 @@
 #define N_STEPS_MAX         200
 
 
-// dynamic validation
-#define TRI_AMP             (double)(1.5)
+
+#define TRI_AMP_DEGS        (double)(400.0)   /* 진폭 [deg/s]  <---- MODIFY */
 #define TRI_PERIOD          (double)(40)
 #define TRI_CYCLES          (int)(5)
 #define TRI_T_TOTAL         (double)(TRI_PERIOD * TRI_CYCLES)       
 #define TRI_N_MAX           (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200) 
 
-#define SINE_AMP            (double)(1.5)
+#define SINE_AMP_DEGS       (double)(400.0)   
 #define SINE_FREQ           (double)(0.025)
 #define SINE_PERIOD         (double)(1.0 / SINE_FREQ)
 #define SINE_CYCLES         (int)(5)
 #define SINE_T_TOTAL        (double)(SINE_PERIOD * SINE_CYCLES)      
 #define SINE_N_MAX          (int)(SINE_T_TOTAL * SAMPLING_FREQ + 200)
-#define SINE_CMD(t)         (SINE_AMP * sin(2.0 * UNIT_PI * SINE_FREQ * (t)))
+#define SINE_CMD_DEGS(t)    (SINE_AMP_DEGS * sin(2.0 * UNIT_PI * SINE_FREQ * (t)))  /* [deg/s] */
 
 #define BUF_SIZE			(int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
 
@@ -77,21 +77,23 @@
 #define MODE_TRI   (1)
 
 
-// run bode
-#define BODE_SINE_AMP       (double)(1.5)
+
+#define BODE_SINE_AMP_DEGS  (double)(400.0)   /* 진폭 [deg/s]  <---- MODIFY */
 #define N_FREQS             (50)
 #define N_SKIP_CYCLES       (int)(1)
 #define N_CYCLES			(int)(5)
 
 #define BODE_N_MAX          (int)(12000)
 
-// runstatcverify
+
 #define STATIC_AVG_TIME     (double)(2.0)
 #define STATIC_AVG_N        (int)(STATIC_AVG_TIME * SAMPLING_FREQ)  // 400
 #define STATIC_N_STEPS      (int)(51)
+#define STATIC_CMD_MAX_DEGS (double)(1200.0)   /* 최대 명령값 [deg/s]  <---- MODIFY */
+#define STATIC_CMD_STEP     (double)(50.0)     /* 명령 간격   [deg/s]  <---- MODIFY */
 
-// step response
-#define STEP_INPUT              (double)(1.5)    // <---- MODIFY: Vcmd [V]
+
+#define STEP_INPUT_DEGS         (double)(500.0)  /* 스텝 명령값 [deg/s]  <---- MODIFY */
 #define STEP_SETTLE_TIME        (double)(2.0)   
 #define STEP_RECORD_TIME        (double)(5.0)    
 

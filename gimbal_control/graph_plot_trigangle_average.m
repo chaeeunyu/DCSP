@@ -1,66 +1,43 @@
 clear; close all; clc;
 
-D = readmatrix('tri_A5.0_F0.0250.out', ...
-               'FileType','text', 'NumHeaderLines', 2);
-t      = D(:,1);
-vcmd   = D(:,2);
-om_tgt = D(:,7);
-om     = D(:,6);
+%% 데이터 로드
+D = readmatrix('tri_A400deg_F0.0250.out', ...
+    'FileType', 'text', 'NumHeaderLines', 3);
+
+t          = D(:,1);
+Omega_cmd  = D(:,2);   % [deg/s]
+Omega      = D(:,6) * 180/pi;  % [rad/s] → [deg/s]
 
 %% 주기 평균
-Fs      = 200;
-T       = 40;
-N_per   = T * Fs;          % 한 주기당 샘플 수 = 8000
-N_cyc   = floor(length(t) / N_per);   % 실제 완성된 주기 수
+Fs    = 200;
+T     = 40;
+N_per = T * Fs;                    % 8000 samples/cycle
+N_cyc = floor(length(t) / N_per); % 5 cycles
 
-% 완성된 주기만 사용
-n_use   = N_per * N_cyc;
-vcmd_m  = reshape(vcmd(1:n_use),   N_per, N_cyc);
-om_tgt_m= reshape(om_tgt(1:n_use), N_per, N_cyc);
-om_m    = reshape(om(1:n_use),     N_per, N_cyc);
+n_use = N_per * N_cyc;
 
-vcmd_avg   = mean(vcmd_m,   2);
-om_tgt_avg = mean(om_tgt_m, 2);
-om_avg     = mean(om_m,     2);
+Omega_cmd_m = reshape(Omega_cmd(1:n_use), N_per, N_cyc);
+Omega_m     = reshape(Omega(1:n_use),     N_per, N_cyc);
 
-t_one = (0 : N_per-1).' / Fs;   % 0 ~ 39.995 sec
+Omega_cmd_avg = mean(Omega_cmd_m, 2);
+Omega_avg     = mean(Omega_m,     2);
 
-% ------------ simulation ----------------
-num = [47.4];
-den = [1 9.515];
-
-% input
-A = 2.0; % magnitude [V]
-freq = 0.025; % [Hz]
-
-dt = 0.005; % sampling period
-Tf = 40 ;
-
-t = 0:dt:Tf ;
-u = A * (2/pi) * asin(sin(2*pi*freq*t));
-
-sys = tf(num, den);
-
-y = lsim(sys, u, t);
-
+t_one = (0 : N_per-1).' / Fs;   % 0 ~ 39.995 s
 
 %% 플롯
-figure;
+figure('Position', [100 100 900 650]);
+
 subplot(2,1,1);
-plot(t_one, vcmd_avg, 'b', 'LineWidth', 1.2);
-ylabel('Vcmd_{ref} [V]');
-title('주기 평균 (Vcmd=1.5[V], f=0.025[Hz])');
+plot(t_one, Omega_cmd_avg, 'b', 'LineWidth', 1.5);
+ylabel('\Omega_{cmd} [deg/s]');
+title(sprintf('Cycle-Averaged Comparison  (A=500 deg/s, f=0.025 Hz, %d cycles)', N_cyc));
 grid on;
 
-% subplot(2,1,2); 
-figure(2);
+subplot(2,1,2);
 hold on;
-plot(t_one, om_tgt_avg*180/pi, 'k--', 'LineWidth', 1.2, 'DisplayName', 'Target \omega (avg)');
-plot(t_one, om_avg*180/pi,     'r',   'LineWidth', 1.2, 'DisplayName', 'Measured \omega (avg)');
-plot(t, y*180/pi, 'g', 'LineWidth', 1.5, 'DisplayName', 'Simulation \omega');
-title('주기 평균 (Vcmd=1.5[V], f=0.025[Hz])');
-ylabel('\omega [deg/s]'); xlabel('Time [s]');
-legend; grid on;
-
-
-
+plot(t_one, Omega_cmd_avg, 'b--', 'LineWidth', 1.3, 'DisplayName', '\Omega_{cmd} (avg)');
+plot(t_one, Omega_avg,     'r',   'LineWidth', 1.5, 'DisplayName', '\Omega measured (avg)');
+ylabel('\Omega [deg/s]');
+xlabel('Time [s]');
+legend('Location', 'best');
+grid on;
