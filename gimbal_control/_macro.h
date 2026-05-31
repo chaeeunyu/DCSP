@@ -7,10 +7,11 @@
 #include <windows.h>
 #include <direct.h>
 #include <string.h>
+#include <conio.h>
 
 
 // basic macro
-#define		DAQ_DEV         "Dev3"
+#define		DAQ_DEV         "Dev8"
 #define		NEUTRAL			(float64)	(2.5)
 #define		ON				(float64)	(5.0)
 #define		OFF				(float64)	(0.0)
@@ -30,6 +31,8 @@
 #define     TRI_VALIDATION      (4)
 #define		STATIC_VALIDATION   (5)
 #define		STEP_RESPONSE       (6)
+#define		POT_POSITIONING		(7)
+#define		POT_DATARECORD		(8)
 
 // ── 신규 추가 ──────────────────────────────────────────────
 // K_LIN 제거: 입력이 Vcmd[V] 대신 omega_c[deg/s]로 변경되어 불필요
@@ -96,5 +99,13 @@
 #define STEP_INPUT_DEGS         (double)(500.0)  /* 스텝 명령값 [deg/s]  <---- MODIFY */
 #define STEP_SETTLE_TIME        (double)(2.0)   
 #define STEP_RECORD_TIME        (double)(5.0)    
+
+// potentiometer positioning
+#define SPECIAL_KEY (224)
+#define RIGHT_KEY	(75)
+#define LEFT_KEY	(77)
+#define EPS			(1.0)	// <--- MODIFY!!!
+
+#define POT_RECORD_TIME     (double)(5.0)
 
 #endif

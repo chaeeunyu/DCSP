@@ -2,6 +2,7 @@
 *.exe
 *.pdb
 .vs/
+*.db
 gimbal_control/.vs/
 *.suo
 *.VC.db

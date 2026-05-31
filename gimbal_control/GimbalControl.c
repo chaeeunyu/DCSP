@@ -79,6 +79,10 @@ void   RunStaticVerify(void);
 void   RunBode(void);
 void   RunStepResponse(void);
 
+// potentiometer positioning
+void pot_positioning(void);
+void RecordPotData(void);
+
 
 void main(void)
 {
@@ -108,6 +112,8 @@ void main(void)
         printf("  4. Triangle Wave Verify\n");
         printf("  5. Static Linearization Verify\n");
         printf("  6. Step Response\n");
+        printf("  7. potentiometer positioning\n");
+        printf("  8. potentiometer Data Record\n");
         printf("  0. Exit\n");
         printf("============================================================\n");
         printf("Select mode > ");
@@ -143,11 +149,19 @@ void main(void)
             RunStepResponse();
             break;
 
+        case POT_POSITIONING :
+            pot_positioning();
+            break;
+
+        case POT_DATARECORD:
+            RecordPotData();
+            break;
+
         default:
             printf("[Error] Invalid mode: %d\n", mode);
             break;
         }
-    } while (mode >= 1 && mode <= 6);
+    } while (mode >= 1 && mode <= 8);
 
 
     printf("[DAQ Cleaning up...]\n");
@@ -188,7 +202,8 @@ void BusyWait_ms(double ms)
 /* Wait until the next sampling interval (based on time_start[ms] and completed sample count) */
 void WaitNextSample(void)
 {
-    double target_ms = count * SAMPLING_TIME * 1000.0;
+    double target_ms = 0.0;
+    target_ms = count* SAMPLING_TIME * 1000.0;
     while (GetWindowTime() - time_init < target_ms); // [ms]
 }
 
@@ -906,4 +921,146 @@ void RunStepResponse(void)
     }
 
     printf("[MODE 6 Done] Output folder: %s\n\n", outputDir);
+}
+
+
+void pot_positioning(void)
+{
+
+    // initialize
+    int keyboard_input = 0; 
+    
+    count = 0.0;
+    time_init = 0.0;
+
+    printf("============================================================\n");
+    printf("  [Potentiometer Positioning]\n");
+    printf("  <- CW (left)    -> CCW (right)    s: end \n");
+    printf("============================================================\n");
+
+
+    // initialize motor
+    motor_power(ON, NEUTRAL);
+    time_init = GetWindowTime();
+
+    // main loop
+    do {
+
+        if (_kbhit()) { /* ------------------------------------------------------------------------------- */
+
+            keyboard_input = _getch();
+            if (keyboard_input == SPECIAL_KEY) {    // recognize special key
+                keyboard_input = _getch();
+
+                if (keyboard_input == RIGHT_KEY)
+                    Vc = NEUTRAL + EPS;       // move CW
+                else if (keyboard_input == LEFT_KEY)
+                    Vc = NEUTRAL - EPS;       // move CCW
+            }
+        }
+        else {
+            Vc = NEUTRAL;     // stop motor
+        }       /* ---------------------------------------------------------------------- decide Vcmd ------------ */
+
+        motor_power(ON, Vc);      // apply Vcmd
+        DAQ_ReadSample();
+        count++;
+        WaitNextSample();   // busy-wait
+
+    } while (!IsEmergencyStop() && keyboard_input != 's');    // end while
+
+    if (IsEmergencyStop())
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+
+    motor_power(ON, NEUTRAL);
+
+    printf("\n------ [Positioning Done] Vpot = %.4f --------\n\n", Vpot);
+
+}
+
+
+/* ── 함수 본체 ── */
+void RecordPotData(void)
+{
+    int savecount = 0;
+    char filename[256];
+    int file_deg = 0;
+
+    const char* outputDir = "Pot_Modeling";
+    _mkdir(outputDir);
+
+    printf("============================================================\n");
+    printf("  [MODE 8] Potentiometer Recording\n");
+    printf("  Record time : %.1f s\n", POT_RECORD_TIME);
+    printf("  Sampling    : %.0f Hz\n", SAMPLING_FREQ);
+    printf("============================================================\n\n");
+
+    printf("[Step 1] Turn on gimbal switch, then press [Enter].\n\n");
+    getchar();
+    GetAsyncKeyState(VK_SPACE);
+
+    /* 버퍼 초기화 */
+    memorySet();
+
+    /* 모터 ON 상태 유지 (NEUTRAL = 정지 상태로 유지, 필요 시 Vcmd 변경) */
+    motor_power(ON, NEUTRAL);
+
+    time_init = GetWindowTime();
+    time_elapsed = 0.0;
+    count = 0;
+
+    printf("[Recording] %.1f s ...\n", POT_RECORD_TIME);
+
+    /* ── 메인 루프 ── */
+    do {
+        DAQ_ReadSample();
+        time_elapsed = (GetWindowTime() - time_init) * 0.001;
+
+        if (count < BUF_SIZE) {
+            buftime[count] = time_elapsed;
+            bufVg[count] = Vg;
+            bufVpot[count] = Vpot;
+            bufomega[count] = omega;
+        }
+
+        if (count % (int)SAMPLING_FREQ == 0)
+            printf("  [%5.2f / %.1f s]  Vpot = %.4f V\n",
+                time_elapsed, POT_RECORD_TIME, Vpot);
+
+        count++;
+        WaitNextSample();
+
+    } while (!IsEmergencyStop() && (time_elapsed < POT_RECORD_TIME));
+
+    motor_power(ON, NEUTRAL);
+
+    if (IsEmergencyStop())
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+
+    /* ── 파일 저장 ── */
+    savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
+
+    printf("Enter the angle [deg] cw \n");
+    scanf("%d", &file_deg);
+
+    sprintf(filename, "%s/pot_record_ccw%d.out", outputDir, file_deg);
+    FILE* fp = fopen(filename, "w+t");
+    if (fp) {
+        fprintf(fp, "%% Potentiometer Recording  %.1f s\n", POT_RECORD_TIME);
+        fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f\n", Vg_offset, K_GIMBAL);
+        fprintf(fp, "%% Fs=%.0f Hz  samples=%d\n\n", SAMPLING_FREQ, savecount);
+        fprintf(fp, "%-20s %-20s %-20s %-20s\n",
+            "Time[s]", "Vg[V]", "Pot[V]", "Omega[rad/s]");
+        for (int i = 0; i < savecount; i++)
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f\n",
+                buftime[i], bufVg[i], bufVpot[i], bufomega[i]);
+        fclose(fp);
+        printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
+    }
+    else {
+        printf("  !! File open failed: %s\n", filename);
+    }
+    while (getchar() != '\n') { ; }
+
+    printf("[MODE 8 Done]\n\n");
 }

@@ -1,0 +1,21 @@
+#include <conio.h>
+_kbiht()
+_getch()
+
+while문 안에
+
+if( _kbhit() )
+{
+	keyboard_input = _getch() ; // get the key pressed from user
+
+	if(keyboard_input = 'r')
+		Vcmd = STOP_V - EPS;
+	else if(keyboard_iput = 'l')
+		Vcmd = STOP_V - EPS ;
+	else if(keyboard_input = 's')
+		break;
+}
+
+
+motor_power(ON, Vcmd);
+Vcmd = STOP_V;

@@ -1,0 +1,19 @@
+﻿  GimbalControl.c
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\GimbalControl.c(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (949). Save the file in Unicode format to prevent data loss
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\_macro.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (949). Save the file in Unicode format to prevent data loss
+  (compiling source file 'GimbalControl.c')
+  
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\GimbalControl.c(866,1): warning C4819: The file contains a character that cannot be represented in the current code page (949). Save the file in Unicode format to prevent data loss
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\GimbalControl.c(927,13): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxCreateTask referenced in function DAQ_Init
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxStartTask referenced in function DAQ_Init
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxStopTask referenced in function DAQ_Cleanup
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxClearTask referenced in function DAQ_Cleanup
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxCreateAIVoltageChan referenced in function DAQ_Init
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxCreateAOVoltageChan referenced in function DAQ_Init
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxReadAnalogF64 referenced in function CalculateGyroBias
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxWriteAnalogF64 referenced in function motor_power
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxResetDevice referenced in function DAQ_Init
+GimbalControl.obj : error LNK2019: unresolved external symbol DAQmxGetExtendedErrorInfo referenced in function CalculateGyroBias
+NIDAQmx.lib : warning LNK4272: library machine type 'x86' conflicts with target machine type 'x64'
+C:\Users\chaeeun\source\repos\DCSP\gimbal_control\x64\Debug\gimbal_control.exe : fatal error LNK1120: 10 unresolved externals
