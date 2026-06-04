@@ -83,6 +83,9 @@ void   RunStepResponse(void);
 void pot_positioning(void);
 void RecordPotData(void);
 
+// Designation loop control - PD
+void RunDesignation(void);
+
 
 void main(void)
 {
@@ -114,6 +117,7 @@ void main(void)
         printf("  6. Step Response\n");
         printf("  7. potentiometer positioning\n");
         printf("  8. potentiometer Data Record\n");
+        printf("  9. Designation Loop - PD control\n");
         printf("  0. Exit\n");
         printf("============================================================\n");
         printf("Select mode > ");
@@ -149,7 +153,7 @@ void main(void)
             RunStepResponse();
             break;
 
-        case POT_POSITIONING :
+        case POT_POSITIONING:
             pot_positioning();
             break;
 
@@ -157,11 +161,15 @@ void main(void)
             RecordPotData();
             break;
 
+        case DESIGNATION:
+            RunDesignation();
+            break;
+
         default:
             printf("[Error] Invalid mode: %d\n", mode);
             break;
         }
-    } while (mode >= 1 && mode <= 8);
+    } while (mode >= 1 && mode <= 9);
 
 
     printf("[DAQ Cleaning up...]\n");
@@ -203,7 +211,7 @@ void BusyWait_ms(double ms)
 void WaitNextSample(void)
 {
     double target_ms = 0.0;
-    target_ms = count* SAMPLING_TIME * 1000.0;
+    target_ms = count * SAMPLING_TIME * 1000.0;
     while (GetWindowTime() - time_init < target_ms); // [ms]
 }
 
@@ -410,7 +418,7 @@ double Triangle_cmd(double t)
 }
 
 
- 
+
 double InverseMap(double omega_c_deg)
 {
     /* 1) 포화 클램핑 */
@@ -928,8 +936,8 @@ void pot_positioning(void)
 {
 
     // initialize
-    int keyboard_input = 0; 
-    
+    int keyboard_input = 0;
+
     count = 0.0;
     time_init = 0.0;
 
@@ -1063,4 +1071,133 @@ void RecordPotData(void)
     while (getchar() != '\n') { ; }
 
     printf("[MODE 8 Done]\n\n");
+}
+
+
+// ──────────────────────────────────────────────────────────────
+//  Designation Loop (PD Position Control)
+//   - User input  : psi_cmd_deg [deg]   (NEUTRAL 기준 절대 각도)
+//                   ( + : CW,  - : CCW )
+//   - psi [deg]   = K_POT * (Vpot - NEUTRAL)
+//   - PD output   : omega_c [deg/s]  ->  InverseMap()  ->  Vc [V]
+// ──────────────────────────────────────────────────────────────
+void RunDesignation(void)
+{
+    char   filename[256];
+    int    savecount = 0;
+    int    k = 0;
+    double psi_cmd_deg = 0.0;      /* absolute input angle        [deg]   */
+    double psi_now_deg = 0.0;      /* absolute current angle      [deg]   */
+    double eps_deg = 0.0;            /* epsilon                   [deg]   */
+    double omega_deg = 0.0;        /* omega measured              [deg/s] */
+    double omega_U_deg = 0.0;      /* omega_cmd                   [deg/s] */
+
+    const char* outputDir = "designation_data";
+    _mkdir(outputDir);
+
+    printf("============================================================\n");
+    printf("  [MODE 9] Designation Loop (PD Position Control)\n");
+    printf("  Kp = %.4f [1/s]   Kd = %.4f [-]\n", KP, KD);
+    printf("  K_pot = %.6f [deg/V]   (psi = K_pot*(Vpot-NEUTRAL))\n", K_POT);
+    printf("  Record time : %.1f s\n", DSG_RECORD_TIME);
+    printf("============================================================\n\n");
+
+    printf("Enter target angle [deg]  (NEUTRAL, + : CW,  - : CCW) : ");
+    scanf("%lf", &psi_cmd_deg);
+    while (getchar() != '\n');
+
+    printf("[Step 1] Turn on gimbal switch, then press [Enter].\n");
+    getchar();
+    GetAsyncKeyState(VK_SPACE);
+
+    // ── Initialize ───────────────────────────────────────────
+    memorySet();
+    motor_power(ON, NEUTRAL);
+    BusyWait_ms(DSG_SETTLE_TIME * 1000.0);   
+
+    /* 시작 위치 확인용 1샘플 (정보 표시 목적) */
+    DAQ_ReadSample();
+    psi_now_deg = K_POT * (Vpot - NEUTRAL);
+    printf("[Init]   Vpot = %.4f V   psi_now = %+.3f deg\n",
+        Vpot, psi_now_deg);
+    printf("[Target] psi_cmd = %+.3f deg\n\n", psi_cmd_deg);
+
+    if (IsEmergencyStop()) {
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+        motor_power(ON, NEUTRAL);
+        return;
+    }
+
+    // ── Main Loop ────────────────────────────────────────────
+    time_init = GetWindowTime();
+    time_elapsed = 0.0;
+    count = 0;
+
+    do {
+        DAQ_ReadSample();
+        time_elapsed = (GetWindowTime() - time_init) * 0.001;
+
+        psi_now_deg = K_POT * (Vpot - NEUTRAL);     // current [deg]
+        eps_deg = psi_cmd_deg - psi_now_deg;        // error[deg]
+
+        omega_deg = omega * RAD2DEG;        // gyro [rad/s] -> [deg/s]
+
+        omega_U_deg = KP * eps_deg - KD * omega_deg;    // PD : outer position + inner rate damping
+
+        Vc = InverseMap(omega_U_deg);       // omega_c[deg / s]->Vc[V](saturation / dead - zone 포함)
+
+        motor_power(ON, Vc);        // apply Vc
+
+        if (count < BUF_SIZE) {
+            buftime[count] = time_elapsed;
+            bufVcmd[count] = omega_U_deg;     /* [deg/s] */
+            bufVc[count] = Vc;
+            bufVg[count] = Vg;
+            bufVpot[count] = Vpot;
+            bufomega[count] = omega;            /* [rad/s] */
+            bufomega_target[count] = psi_now_deg;      /* [deg] 재활용 */
+        }
+
+        /*if (count % (int)SAMPLING_FREQ == 0)
+            printf("  [%5.2f s]  psi = %+8.3f / %+8.3f deg   "
+                "e = %+8.3f deg   omega_c = %+8.2f deg/s   Vc = %5.3f V\n",
+                time_elapsed, psi_now_deg, psi_cmd_deg,
+                eps_deg, omega_U_deg, Vc);*/
+
+        count++;
+        WaitNextSample();
+
+    } while (!IsEmergencyStop() && (time_elapsed < DSG_RECORD_TIME));
+
+    motor_power(ON, NEUTRAL);
+
+    if (IsEmergencyStop())
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+
+    // ── File Save ────────────────────────────────────────────
+    savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
+    sprintf(filename, "%s/dsg_psi%+.0fdeg.out", outputDir, psi_cmd_deg);
+    FILE* fp = fopen(filename, "w+t");
+    if (fp) {
+        fprintf(fp, "%% Designation Loop  psi_cmd=%+.3fdeg  (absolute, NEUTRAL ref)\n",
+            psi_cmd_deg);
+        fprintf(fp, "%% Kp=%.4f  Kd=%.4f  K_pot=%.6fdeg/V\n",
+            KP, KD, K_POT);
+        fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  samples=%d\n\n",
+            Vg_offset, K_GIMBAL, savecount);
+        fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
+            "Time[s]", "OmegaCmd[deg/s]", "Vc[V]",
+            "Vg[V]", "Pot[V]", "Omega[rad/s]", "Psi[deg]");
+        for (k = 0; k < savecount; k++)
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
+                buftime[k], bufVcmd[k], bufVc[k],
+                bufVg[k], bufVpot[k], bufomega[k], bufomega_target[k]);
+        fclose(fp);
+        printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
+    }
+    else {
+        printf("  !! File open failed: %s\n", filename);
+    }
+
+    printf("[MODE 9 Done] Output folder: %s\n\n", outputDir);
 }

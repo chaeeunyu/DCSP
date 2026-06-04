@@ -11,17 +11,17 @@
 
 
 // basic macro
-#define		DAQ_DEV         "Dev8"
-#define		NEUTRAL			(float64)	(2.5)
-#define		ON				(float64)	(5.0)
-#define		OFF				(float64)	(0.0)
+#define      DAQ_DEV         "Dev8"
+#define      NEUTRAL         (float64)   (2.5)
+#define      ON            (float64)   (5.0)
+#define      OFF            (float64)   (0.0)
 #define     SAMPLING_FREQ   (double)    (200.0)
 #define     SAMPLING_TIME   (double)    (1.0 / SAMPLING_FREQ)
 #define     UNIT_PI         (double)    (3.14159265358979)
 #define     K_GIMBAL        (double)    (1000.0 / 0.67 * UNIT_PI / 180.0)
 #define     N_BIAS          (int)       (200)
 
-#define		READ_DATA(arr)	DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL)
+#define      READ_DATA(arr)   DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL)
 
 // switch macro
 #define     EXIT                (0)
@@ -29,10 +29,11 @@
 #define     FREQ_SWEEP          (2)
 #define     SINE_VALIDATION     (3)
 #define     TRI_VALIDATION      (4)
-#define		STATIC_VALIDATION   (5)
-#define		STEP_RESPONSE       (6)
-#define		POT_POSITIONING		(7)
-#define		POT_DATARECORD		(8)
+#define      STATIC_VALIDATION   (5)
+#define      STEP_RESPONSE       (6)
+#define      POT_POSITIONING      (7)
+#define      POT_DATARECORD      (8)
+#define     DESIGNATION         (9)
 
 // ── 신규 추가 ──────────────────────────────────────────────
 // K_LIN 제거: 입력이 Vcmd[V] 대신 omega_c[deg/s]로 변경되어 불필요
@@ -74,7 +75,7 @@
 #define SINE_N_MAX          (int)(SINE_T_TOTAL * SAMPLING_FREQ + 200)
 #define SINE_CMD_DEGS(t)    (SINE_AMP_DEGS * sin(2.0 * UNIT_PI * SINE_FREQ * (t)))  /* [deg/s] */
 
-#define BUF_SIZE			(int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
+#define BUF_SIZE         (int)(TRI_T_TOTAL * SAMPLING_FREQ + 200)
 
 #define MODE_SINE  (0)
 #define MODE_TRI   (1)
@@ -84,7 +85,7 @@
 #define BODE_SINE_AMP_DEGS  (double)(400.0)   /* 진폭 [deg/s]  <---- MODIFY */
 #define N_FREQS             (50)
 #define N_SKIP_CYCLES       (int)(1)
-#define N_CYCLES			(int)(5)
+#define N_CYCLES         (int)(5)
 
 #define BODE_N_MAX          (int)(12000)
 
@@ -102,10 +103,29 @@
 
 // potentiometer positioning
 #define SPECIAL_KEY (224)
-#define RIGHT_KEY	(75)
-#define LEFT_KEY	(77)
-#define EPS			(1.0)	// <--- MODIFY!!!
+#define RIGHT_KEY   (75)
+#define LEFT_KEY   (77)
+#define EPS         (1.0)   // <--- MODIFY!!!
 
 #define POT_RECORD_TIME     (double)(5.0)
+
+
+// Designation Loop control (PD Position Controller)
+// MATLAB: Kp = Wc^2/Km, Kd = (2*Zc*Wc - Pm)/Km
+// Wc = 37.0, Zc = 0.7, Km = 9.993, Pm = 10.87
+#define KP              (double)(72.951065746022210)   /* [1/s]  <--- VERIFY  */
+#define KD              (double)(2.694886420494346)    /* [-]    <--- VERIFY  */
+
+// ── Potentiometer Calibration ─────────────────────────────────
+// Vpot [V] - Vpot_ref [V] = K_POT * psi [deg]
+#define K_POT               (double)(68.07352)   /* [deg/V]  <--- MODIFY after MATLAB polyfit */
+
+// ── Designation Loop Timing & Logging ─────────────────────────
+#define DSG_SETTLE_TIME     (double)(1.5)      /* pot 초기값 평균화 시간 [s] */
+#define DSG_RECORD_TIME     (double)(5.0)      /* step response 기록 시간 [s] */
+#define DSG_N_MAX           (int)(DSG_RECORD_TIME * SAMPLING_FREQ + 200)
+
+// 단위 변환
+#define RAD2DEG             (double)(180.0 / UNIT_PI)
 
 #endif
