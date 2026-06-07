@@ -1088,9 +1088,11 @@ void RunDesignation(void)
     int    k = 0;
     double psi_cmd_deg = 0.0;      /* absolute input angle        [deg]   */
     double psi_now_deg = 0.0;      /* absolute current angle      [deg]   */
-    double eps_deg = 0.0;            /* epsilon                   [deg]   */
+    double eps_deg = 0.0;           /* epsilon                   [deg]   */
+    double eps_rad = 0.0;
     double omega_deg = 0.0;        /* omega measured              [deg/s] */
     double omega_U_deg = 0.0;      /* omega_cmd                   [deg/s] */
+    double omega_U_rad = 0.0;
 
     const char* outputDir = "designation_data";
     _mkdir(outputDir);
@@ -1113,11 +1115,11 @@ void RunDesignation(void)
     // ── Initialize ───────────────────────────────────────────
     memorySet();
     motor_power(ON, NEUTRAL);
-    BusyWait_ms(DSG_SETTLE_TIME * 1000.0);   
+    BusyWait_ms(DSG_SETTLE_TIME * 1000.0);
 
     /* 시작 위치 확인용 1샘플 (정보 표시 목적) */
     DAQ_ReadSample();
-    psi_now_deg = K_POT * (Vpot - NEUTRAL);
+    psi_now_deg = K_POT * (Vpot - PSI_NEUTRAL);
     printf("[Init]   Vpot = %.4f V   psi_now = %+.3f deg\n",
         Vpot, psi_now_deg);
     printf("[Target] psi_cmd = %+.3f deg\n\n", psi_cmd_deg);
@@ -1137,13 +1139,11 @@ void RunDesignation(void)
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
-        psi_now_deg = K_POT * (Vpot - NEUTRAL);     // current [deg]
+        psi_now_deg = K_POT * (Vpot - PSI_NEUTRAL);     // current [deg]
         eps_deg = psi_cmd_deg - psi_now_deg;        // error[deg]
-
-        omega_deg = omega * RAD2DEG;        // gyro [rad/s] -> [deg/s]
-
-        omega_U_deg = KP * eps_deg - KD * omega_deg;    // PD : outer position + inner rate damping
-
+        eps_rad = eps_deg * DEG2RAD;
+        omega_U_rad = KP * eps_rad - KD * omega;    // PD : outer position + inner rate damping
+        omega_U_deg = omega_U_rad * RAD2DEG;
         Vc = InverseMap(omega_U_deg);       // omega_c[deg / s]->Vc[V](saturation / dead - zone 포함)
 
         motor_power(ON, Vc);        // apply Vc

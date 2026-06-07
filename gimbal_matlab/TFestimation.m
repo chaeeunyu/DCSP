@@ -15,7 +15,7 @@ tblMagLin   = 10.^(tblMagAtt / 20);
 tblFreqResp = tblMagLin .* exp(1j * tblPhsDelay);
 
 Nnum = 0;
-Nden = 1;
+Nden = 2;
 
 wt = ones(size(tblOmega)) ./ abs(tblFreqResp); 
 [num, den] = invfreqs(tblFreqResp, tblOmega, Nnum, Nden, wt);

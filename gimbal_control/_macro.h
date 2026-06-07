@@ -11,7 +11,7 @@
 
 
 // basic macro
-#define      DAQ_DEV         "Dev8"
+#define      DAQ_DEV         "Dev3"
 #define      NEUTRAL         (float64)   (2.5)
 #define      ON            (float64)   (5.0)
 #define      OFF            (float64)   (0.0)
@@ -35,8 +35,7 @@
 #define      POT_DATARECORD      (8)
 #define     DESIGNATION         (9)
 
-// ── 신규 추가 ──────────────────────────────────────────────
-// K_LIN 제거: 입력이 Vcmd[V] 대신 omega_c[deg/s]로 변경되어 불필요
+
 
 /* CW  4차 다항식: Vc = f(omega_deg)  <---- MODIFY after MATLAB polyfit */
 #define CW_C4   (double)(+3.989784e-13)
@@ -113,8 +112,8 @@
 // Designation Loop control (PD Position Controller)
 // MATLAB: Kp = Wc^2/Km, Kd = (2*Zc*Wc - Pm)/Km
 // Wc = 37.0, Zc = 0.7, Km = 9.993, Pm = 10.87
-#define KP              (double)(72.951065746022210)   /* [1/s]  <--- VERIFY  */
-#define KD              (double)(2.694886420494346)    /* [-]    <--- VERIFY  */
+#define KP              (double)( 57.6403)   /* [1/s]  <--- VERIFY  */
+#define KD              (double)( 1.7943)    /* [-]    <--- VERIFY  */
 
 // ── Potentiometer Calibration ─────────────────────────────────
 // Vpot [V] - Vpot_ref [V] = K_POT * psi [deg]
@@ -124,8 +123,12 @@
 #define DSG_SETTLE_TIME     (double)(1.5)      /* pot 초기값 평균화 시간 [s] */
 #define DSG_RECORD_TIME     (double)(5.0)      /* step response 기록 시간 [s] */
 #define DSG_N_MAX           (int)(DSG_RECORD_TIME * SAMPLING_FREQ + 200)
+#define PSI_NEUTRAL         (double)(2.511)		// [V]
 
 // 단위 변환
 #define RAD2DEG             (double)(180.0 / UNIT_PI)
+#define DEG2RAD            (double)(UNIT_PI/180.0)
+
+
 
 #endif

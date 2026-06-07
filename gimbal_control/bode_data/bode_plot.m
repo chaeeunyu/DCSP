@@ -32,3 +32,6 @@ subplot(2,1,2)
 semilogx(tblOmega, data(:,3), 'bo'); hold on;
 semilogx(w, squeeze(phs), 'r-');
 ylabel('Phase [deg]'); grid on;
+
+figure(2);
+pzmap(EstTF);
