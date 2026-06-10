@@ -20,6 +20,7 @@
 #define     UNIT_PI         (double)    (3.14159265358979)
 #define     K_GIMBAL        (double)    (1000.0 / 0.67 * UNIT_PI / 180.0)
 #define     N_BIAS          (int)       (200)
+#define		RECORD_TIME		(double)	(5.0)
 
 #define      READ_DATA(arr)   DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL)
 
@@ -29,11 +30,12 @@
 #define     FREQ_SWEEP          (2)
 #define     SINE_VALIDATION     (3)
 #define     TRI_VALIDATION      (4)
-#define      STATIC_VALIDATION   (5)
-#define      STEP_RESPONSE       (6)
-#define      POT_POSITIONING      (7)
-#define      POT_DATARECORD      (8)
+#define     STATIC_VALIDATION   (5)
+#define     STEP_RESPONSE       (6)
+#define     POT_POSITIONING     (7)
+#define     POT_DATARECORD      (8)
 #define     DESIGNATION         (9)
+#define     STABILIZATION       (10)
 
 
 
@@ -97,8 +99,7 @@
 
 
 #define STEP_INPUT_DEGS         (double)(500.0)  /* 스텝 명령값 [deg/s]  <---- MODIFY */
-#define STEP_SETTLE_TIME        (double)(2.0)   
-#define STEP_RECORD_TIME        (double)(5.0)    
+#define STEP_SETTLE_TIME        (double)(2.0)     
 
 // potentiometer positioning
 #define SPECIAL_KEY (224)
@@ -106,7 +107,6 @@
 #define LEFT_KEY   (77)
 #define EPS         (1.0)   // <--- MODIFY!!!
 
-#define POT_RECORD_TIME     (double)(5.0)
 
 
 // Designation Loop control (PD Position Controller)
@@ -120,10 +120,14 @@
 #define K_POT               (double)(68.07352)   /* [deg/V]  <--- MODIFY after MATLAB polyfit */
 
 // ── Designation Loop Timing & Logging ─────────────────────────
-#define DSG_SETTLE_TIME     (double)(1.5)      /* pot 초기값 평균화 시간 [s] */
-#define DSG_RECORD_TIME     (double)(5.0)      /* step response 기록 시간 [s] */
-#define DSG_N_MAX           (int)(DSG_RECORD_TIME * SAMPLING_FREQ + 200)
+#define LOOP_SETTLE_TIME     (double)(1.5)      /* pot 초기값 평균화 시간 [s] */
+//#define LOOP_N_MAX           (int)(RECORD_TIME * SAMPLING_FREQ + 200)
 #define PSI_NEUTRAL         (double)(2.511)		// [V]
+
+
+// Stabilization Loop control (PI Controller)
+#define KP_STB			(double)(1.794255979185430)		// [-]
+#define KI_STB			(double)(57.640348243770640)	// [1/s]
 
 // 단위 변환
 #define RAD2DEG             (double)(180.0 / UNIT_PI)

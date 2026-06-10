@@ -6,22 +6,22 @@
 clear; close all; clc;
 
 % initialize
-Km = 0.84026 ;  % (Km*Pm) 헷갈려서 적어놈.
-Pm = 14.1315 ;  % (=Wm) []
+Km = 9.993 ;
+Pm = 10.87 ;  % []
 W_sat = 1400;
 dz    =28*(pi/180); 
 dz_deg = 28;
 
 % Design parameter --- PD-controller
-Wc = 21;  % [rad/s] <================================ MODIFY
-Zc = 0.707;  % [-] <================================ MODIFY
+Wc = 27;  % [rad/s] <================================ MODIFY
+Zc = 0.6;  % [-] <================================ MODIFY
 
-Kp = Wc^2 / (Km*Pm) ;       % unit: [rad/s]
-Kd = 2*Zc*Wc/(Km*Pm) - (1/Km) ;  % unit: [-] dimensionless
+Kp = Wc^2 / Km ;       % unit: [rad/s]
+Kd = (2*Zc*Wc - Pm) / Km ;  % unit: [-] dimensionless
 
 % transfer function
 s = tf('s');
-Gm = (Km*Pm) / (s + Pm);    % input: omega_c [deg/s], output: omega [deg/s]
+Gm = Km / (s + Pm);    % input: omega_c [deg/s], output: omega [deg/s]
 % Gc = Kp + Kd * s ;
 Go_vel = Kp*Gm / (1 + Kd*Gm) * (1/s);
 Go_vel = minreal(Go_vel);

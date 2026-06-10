@@ -83,8 +83,9 @@ void   RunStepResponse(void);
 void pot_positioning(void);
 void RecordPotData(void);
 
-// Designation loop control - PD
-void RunDesignation(void);
+// Loop Control
+void RunDesignation(void);      // PD
+void RunStabilization(void);    // PI
 
 
 void main(void)
@@ -118,6 +119,7 @@ void main(void)
         printf("  7. potentiometer positioning\n");
         printf("  8. potentiometer Data Record\n");
         printf("  9. Designation Loop - PD control\n");
+        printf("  10. Stabilization Loop - PI control\n");
         printf("  0. Exit\n");
         printf("============================================================\n");
         printf("Select mode > ");
@@ -165,11 +167,15 @@ void main(void)
             RunDesignation();
             break;
 
+        case STABILIZATION:
+            RunStabilization();
+            break;
+
         default:
             printf("[Error] Invalid mode: %d\n", mode);
             break;
         }
-    } while (mode >= 1 && mode <= 9);
+    } while (mode >= 1 && mode <= 10);
 
 
     printf("[DAQ Cleaning up...]\n");
@@ -840,7 +846,7 @@ void RunStepResponse(void)
     printf("  [MODE 6] Step Response\n");
     printf("  Step input  : %.2f deg/s  (STEP_INPUT_DEGS)\n", STEP_INPUT_DEGS);
     printf("  Settle time : %.1f s  (Keep neutral before Step Input...)\n", STEP_SETTLE_TIME);
-    printf("  Record time : %.1f s  (Time recorded after Step Input)\n", STEP_RECORD_TIME);
+    printf("  Record time : %.1f s  (Time recorded after Step Input)\n", RECORD_TIME);
     printf("  K_gimbal = %.4f\n", K_GIMBAL);
     printf("============================================================\n\n");
 
@@ -891,12 +897,12 @@ void RunStepResponse(void)
 
         if (count % (int)SAMPLING_FREQ == 0)
             printf("  [%5.2f / %.1f s]  omega = %+8.4f rad/s\n",
-                time_elapsed, STEP_RECORD_TIME, omega);
+                time_elapsed, RECORD_TIME, omega);
 
         count++;
         WaitNextSample();
 
-    } while (!IsEmergencyStop() && (time_elapsed < STEP_RECORD_TIME));
+    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
 
     motor_power(ON, NEUTRAL);
 
@@ -913,7 +919,7 @@ void RunStepResponse(void)
             Vg_offset, K_GIMBAL);
         fprintf(fp, "%% omega_target=%.6f rad/s  "
             "settle=%.1fs  record=%.1fs  samples=%d\n\n",
-            omega_target, STEP_SETTLE_TIME, STEP_RECORD_TIME, savecount);
+            omega_target, STEP_SETTLE_TIME, RECORD_TIME, savecount);
         fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
             "Time[s]", "OmegaCmd[deg/s]", "Vc[V]",
             "Vg[V]", "Pot[V]", "Omega[rad/s]", "Omega_target[rad/s]");
@@ -999,7 +1005,7 @@ void RecordPotData(void)
 
     printf("============================================================\n");
     printf("  [MODE 8] Potentiometer Recording\n");
-    printf("  Record time : %.1f s\n", POT_RECORD_TIME);
+    printf("  Record time : %.1f s\n", RECORD_TIME);
     printf("  Sampling    : %.0f Hz\n", SAMPLING_FREQ);
     printf("============================================================\n\n");
 
@@ -1017,7 +1023,7 @@ void RecordPotData(void)
     time_elapsed = 0.0;
     count = 0;
 
-    printf("[Recording] %.1f s ...\n", POT_RECORD_TIME);
+    printf("[Recording] %.1f s ...\n", RECORD_TIME);
 
     /* ── 메인 루프 ── */
     do {
@@ -1033,12 +1039,12 @@ void RecordPotData(void)
 
         if (count % (int)SAMPLING_FREQ == 0)
             printf("  [%5.2f / %.1f s]  Vpot = %.4f V\n",
-                time_elapsed, POT_RECORD_TIME, Vpot);
+                time_elapsed, RECORD_TIME, Vpot);
 
         count++;
         WaitNextSample();
 
-    } while (!IsEmergencyStop() && (time_elapsed < POT_RECORD_TIME));
+    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
 
     motor_power(ON, NEUTRAL);
 
@@ -1054,7 +1060,7 @@ void RecordPotData(void)
     sprintf(filename, "%s/pot_record_ccw%d.out", outputDir, file_deg);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
-        fprintf(fp, "%% Potentiometer Recording  %.1f s\n", POT_RECORD_TIME);
+        fprintf(fp, "%% Potentiometer Recording  %.1f s\n", RECORD_TIME);
         fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f\n", Vg_offset, K_GIMBAL);
         fprintf(fp, "%% Fs=%.0f Hz  samples=%d\n\n", SAMPLING_FREQ, savecount);
         fprintf(fp, "%-20s %-20s %-20s %-20s\n",
@@ -1101,23 +1107,21 @@ void RunDesignation(void)
     printf("  [MODE 9] Designation Loop (PD Position Control)\n");
     printf("  Kp = %.4f [1/s]   Kd = %.4f [-]\n", KP, KD);
     printf("  K_pot = %.6f [deg/V]   (psi = K_pot*(Vpot-NEUTRAL))\n", K_POT);
-    printf("  Record time : %.1f s\n", DSG_RECORD_TIME);
+    printf("  Record time : %.1f s\n", RECORD_TIME);
     printf("============================================================\n\n");
 
     printf("Enter target angle [deg]  (NEUTRAL, + : CW,  - : CCW) : ");
     scanf("%lf", &psi_cmd_deg);
     while (getchar() != '\n');
 
-    printf("[Step 1] Turn on gimbal switch, then press [Enter].\n");
-    getchar();
     GetAsyncKeyState(VK_SPACE);
 
     // ── Initialize ───────────────────────────────────────────
     memorySet();
     motor_power(ON, NEUTRAL);
-    BusyWait_ms(DSG_SETTLE_TIME * 1000.0);
+    BusyWait_ms(LOOP_SETTLE_TIME * 1000.0);
 
-    /* 시작 위치 확인용 1샘플 (정보 표시 목적) */
+
     DAQ_ReadSample();
     psi_now_deg = K_POT * (Vpot - PSI_NEUTRAL);
     printf("[Init]   Vpot = %.4f V   psi_now = %+.3f deg\n",
@@ -1167,7 +1171,7 @@ void RunDesignation(void)
         count++;
         WaitNextSample();
 
-    } while (!IsEmergencyStop() && (time_elapsed < DSG_RECORD_TIME));
+    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
 
     motor_power(ON, NEUTRAL);
 
@@ -1200,4 +1204,117 @@ void RunDesignation(void)
     }
 
     printf("[MODE 9 Done] Output folder: %s\n\n", outputDir);
+}
+
+
+
+void RunStabilization(void)
+{
+    char   filename[256];
+    int    savecount = 0;
+    int    k = 0;
+
+    // controller variables
+    double omega_c = 0.0;   // = omega_cmd [rad/s] == 0
+    double err = 0.0;       //  e = omega_c - omega_h [rad/s]
+    double err_prev = 0.0;  // for tustin
+    double xI = 0.0;        // integrator [rad]
+    double omega_U = 0.0;   // [deg/s] PI-controller output (= motor input)'
+
+    const char* outputDir = "stabilization_data";
+    _mkdir(outputDir);
+
+    printf("============================================================\n");
+    printf("  [MODE 10] Stabilization Loop (PI Rate Controller)\n");
+    printf("  Kp_stab = %.4f [-]   Ki_stab = %.4f [1/s]\n", KP_STB, KI_STB);
+    printf("  omega_c = 0 rad/s  (inertial stabilization)\n");
+    printf("  Settle  : %.1f s  |  Record : %.1f s\n", LOOP_SETTLE_TIME, RECORD_TIME);
+    printf("============================================================\n\n");
+
+    printf("Turn on gimbal switch, then press [Enter].\n");
+    getchar();
+    GetAsyncKeyState(VK_SPACE);
+
+    // ------------------------ initialize ----------------------------
+    memorySet();
+    motor_power(ON, NEUTRAL);
+    BusyWait_ms(LOOP_SETTLE_TIME * 1000.0);
+
+    DAQ_ReadSample();
+    err_prev = omega_c - omega;     // omega_c - omega_h
+
+    printf("[Init]   omega_h = %+.4f rad/s\n\n", omega);
+
+    if (IsEmergencyStop()) {
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+        motor_power(ON, NEUTRAL);
+        return;
+    }
+
+
+    // ----------------------- main loop -----------------------------------------------------------------
+    time_init = GetWindowTime();
+    time_elapsed = 0.0;
+    count = 0;
+
+    do {
+        DAQ_ReadSample();
+        time_elapsed = (GetWindowTime() - time_init) * 0.001;
+
+        // calculate error
+        err = omega_c - omega;      // [rad/s] 
+
+        // tustin method
+        xI = xI + (SAMPLING_TIME / 2) * (err + err_prev);   // trapezoidal
+        err_prev = err;
+
+        // controller output (= motor input)
+        omega_U = KP_STB * err + KI_STB * xI;     // !!! KP*err + KI*\int(err)dt !!!
+        omega_U = omega_U * RAD2DEG;              // [deg/s]
+
+        // apply voltage to motor
+        Vc = InverseMap(omega_U);
+        motor_power(ON, Vc);
+
+        // record data
+        if (count < BUF_SIZE) {
+            buftime[count] = time_elapsed;
+            bufVcmd[count] = omega_U;     // [deg/s]
+            bufVc[count] = Vc;
+            bufVg[count] = Vg;
+            bufVpot[count] = Vpot;
+            bufomega[count] = omega;
+            bufomega_target[count] = err; // [rad/s]
+        }
+
+        count++;
+        WaitNextSample();
+
+    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));   
+    // -------------------------------------------------------------- end while ---------------------------------------
+
+    if (IsEmergencyStop())
+        printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
+
+    // save files
+    savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
+    sprintf(filename, "%s/stb_Kp%.4f_Ki%.4f.out",
+        outputDir, KP_STB, KI_STB);
+    FILE* fp = fopen(filename, "w+t");
+    if (fp) {
+        fprintf(fp, "%% Stabilization Loop  omega_c=0 rad/s\n");
+        fprintf(fp, "%% Kp_stab=%.4f  Ki_stab=%.4f  (Tustin integrator)\n", KP_STB, KI_STB);
+        fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  samples=%d\n\n", Vg_offset, K_GIMBAL, savecount);
+        fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega[rad/s]", "Error[rad/s]");
+        for (k = 0; k < savecount; k++)
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k], bufomega_target[k]);
+        fclose(fp);
+        printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
+    }
+    else {
+        printf("  !! File open failed: %s\n", filename);
+    }
+
+    printf("[MODE 10 Done] Output folder: %s\n\n", outputDir);
+
 }
