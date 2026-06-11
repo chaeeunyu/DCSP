@@ -1290,7 +1290,7 @@ void RunStabilization(void)
         count++;
         WaitNextSample();
 
-    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));   
+    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
     // -------------------------------------------------------------- end while ---------------------------------------
 
     if (IsEmergencyStop())
@@ -1317,4 +1317,4 @@ void RunStabilization(void)
 
     printf("[MODE 10 Done] Output folder: %s\n\n", outputDir);
 
-}
+}  

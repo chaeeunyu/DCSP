@@ -1,0 +1,14 @@
+clear; close all; clc;
+
+%% 데이터 로드
+D = readmatrix('raw_f2.00Hz.out', ...
+    'FileType', 'text', 'NumHeaderLines', 3);
+
+t          = D(:,1);
+Omega_cmd  = D(:,2);   % [deg/s]
+Omega      = D(:,6) * 180/pi;  % [rad/s] → [deg/s]
+figure;
+plot(t, Omega_cmd, 'b--', 'LineWidth', 1.3, 'DisplayName', '\Omega_{cmd} (avg)');
+hold on;
+plot(t, Omega, 'r', 'LineWidth', 1.3, 'DisplayName', '\Omega_{cmd} (avg)');
+grid on;

@@ -20,7 +20,7 @@
 #define     UNIT_PI         (double)    (3.14159265358979)
 #define     K_GIMBAL        (double)    (1000.0 / 0.67 * UNIT_PI / 180.0)
 #define     N_BIAS          (int)       (200)
-#define		RECORD_TIME		(double)	(5.0)
+#define		RECORD_TIME		(double)	(10.0)
 
 #define      READ_DATA(arr)   DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL)
 
@@ -40,18 +40,18 @@
 
 
 /* CW  4차 다항식: Vc = f(omega_deg)  <---- MODIFY after MATLAB polyfit */
-#define CW_C4   (double)(+3.989784e-13)
-#define CW_C3   (double)(+7.448897e-11)
-#define CW_C2   (double)(-4.677239e-07)
-#define CW_C1   (double)(+1.261769e-03)
-#define CW_C0   (double)(+2.693027e+00)
+#define CW_C4   (double)(-2.123276e-13)
+#define CW_C3   (double)(+9.891086e-10)
+#define CW_C2   (double)(-5.800253e-07)
+#define CW_C1   (double)(+1.225497e-03)
+#define CW_C0   (double)(+2.722391e+00)
 
 /* CCW */
-#define CCW_C4  (double)(+7.466100e-14)
-#define CCW_C3  (double)(+1.136119e-09)
-#define CCW_C2  (double)(+1.220581e-06)
-#define CCW_C1  (double)(+1.514228e-03)
-#define CCW_C0  (double)(+2.306548e+00)
+#define CCW_C4  (double)(+1.174692e-12)
+#define CCW_C3  (double)(+3.376534e-09)
+#define CCW_C2  (double)(+2.532918e-06)
+#define CCW_C1  (double)(+1.886410e-03)
+#define CCW_C0  (double)( +2.308813e+00 )
 #define WC_DZ       (double)(20.0)       /* 데드존 경계 [deg/s]  */
 #define WC_SAT      (double)(1400.0)     /* 포화 속도   [deg/s]  */
 
@@ -112,8 +112,8 @@
 // Designation Loop control (PD Position Controller)
 // MATLAB: Kp = Wc^2/Km, Kd = (2*Zc*Wc - Pm)/Km
 // Wc = 37.0, Zc = 0.7, Km = 9.993, Pm = 10.87
-#define KP              (double)( 57.6403)   /* [1/s]  <--- VERIFY  */
-#define KD              (double)( 1.7943)    /* [-]    <--- VERIFY  */
+#define KP              (double)( 49.8893)   /* [1/s]  <--- VERIFY  */
+#define KD              (double)( 1.6487)    /* [-]    <--- VERIFY  */
 
 // ── Potentiometer Calibration ─────────────────────────────────
 // Vpot [V] - Vpot_ref [V] = K_POT * psi [deg]
@@ -126,8 +126,8 @@
 
 
 // Stabilization Loop control (PI Controller)
-#define KP_STB			(double)(1.794255979185430)		// [-]
-#define KI_STB			(double)(57.640348243770640)	// [1/s]
+#define KP_STB			(double)(1.0288)		// [-]
+#define KI_STB			(double)(29.5203)	// [1/s]
 
 // 단위 변환
 #define RAD2DEG             (double)(180.0 / UNIT_PI)

@@ -6,15 +6,15 @@
 clear; close all; clc;
 
 % initialize
-Km = 9.993 ;
-Pm = 10.87 ;  % []
+Km =  13.55;
+Pm = 14.06 ;  % []
 W_sat = 1400;
 dz    =28*(pi/180); 
 dz_deg = 28;
 
 % Design parameter --- PD-controller
-Wc = 27;  % [rad/s] <================================ MODIFY
-Zc = 0.6;  % [-] <================================ MODIFY
+Wc = 26;  % [rad/s] <================================ MODIFY
+Zc = 0.7;  % [-] <================================ MODIFY
 
 Kp = Wc^2 / Km ;       % unit: [rad/s]
 Kd = (2*Zc*Wc - Pm) / Km ;  % unit: [-] dimensionless
