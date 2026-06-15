@@ -19,7 +19,8 @@ double Vg = 0.0;
 double Vpot = 0.0;
 double omega = 0.0;
 double omega_target = 0.0;  /* InverseMap 내부에서 [rad/s]로 저장됨 */
-double readArr[2] = { 0.0 };
+double disturbance = 0.0;
+double readArr[3] = { 0.0 };    // ai0, ai2, ai3
 double writeArr[2] = { 0.0 };
 int nStep = 0;
 int count = 0;
@@ -36,6 +37,7 @@ double bufVg[BUF_SIZE];
 double bufVpot[BUF_SIZE];
 double bufomega[BUF_SIZE];
 double bufomega_target[BUF_SIZE];
+double buf_disturbance[BUF_SIZE];
 
 
 /* Bode results */
@@ -203,6 +205,7 @@ void memorySet(void)
     memset(bufVpot, 0, sizeof(bufVpot));
     memset(bufomega, 0, sizeof(bufomega));
     memset(bufomega_target, 0, sizeof(bufomega_target));
+    memset(buf_disturbance, 0, sizeof(buf_disturbance));
 }
 
 
@@ -266,7 +269,7 @@ void DAQ_Init(void)
     DAQmxCreateTask("", &g_taskAI);
     DAQmxCreateTask("", &g_taskAO);
 
-    DAQmxCreateAIVoltageChan(g_taskAI, DAQ_DEV "/ai2, " DAQ_DEV "/ai3", "", DAQmx_Val_RSE, -10.0, 10.0, DAQmx_Val_Volts, "");
+    DAQmxCreateAIVoltageChan(g_taskAI, DAQ_DEV "/ai2, " DAQ_DEV "/ai3," DAQ_DEV "/ai0", "", DAQmx_Val_RSE, -10.0, 10.0, DAQmx_Val_Volts, "");
     DAQmxCreateAOVoltageChan(g_taskAO, DAQ_DEV "/ao0, " DAQ_DEV "/ao1", "", 0.0, 5.0, DAQmx_Val_Volts, "");
 
     DAQmxStartTask(g_taskAI);
@@ -294,9 +297,10 @@ void DAQ_ReadSample(void)
         DAQmxGetExtendedErrorInfo(errBuff, 2048);
         printf("[DAQ Read Error] %s\n", errBuff);
     }
-    Vg = readArr[0];
-    Vpot = readArr[1];
+    Vg = readArr[0];    // ai2
+    Vpot = readArr[1];  // ai3
     omega = K_GIMBAL * (Vg - Vg_offset);
+    disturbance = readArr[2];
 }
 
 
@@ -1243,7 +1247,7 @@ void RunStabilization(void)
     DAQ_ReadSample();
     err_prev = omega_c - omega;     // omega_c - omega_h
 
-    printf("[Init]   omega_h = %+.4f rad/s\n\n", omega);
+    printf("[start]   Loop Duration = %+.2f [sec]\n\n", RECORD_TIME);
 
     if (IsEmergencyStop()) {
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
@@ -1285,6 +1289,7 @@ void RunStabilization(void)
             bufVpot[count] = Vpot;
             bufomega[count] = omega;
             bufomega_target[count] = err; // [rad/s]
+            buf_disturbance[count] = disturbance;
         }
 
         count++;
@@ -1292,22 +1297,25 @@ void RunStabilization(void)
 
     } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
     // -------------------------------------------------------------- end while ---------------------------------------
+    motor_power(ON, NEUTRAL);
 
+    printf("----------- while loop is over ----------------\n");
     if (IsEmergencyStop())
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
     // save files
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
-    sprintf(filename, "%s/stb_Kp%.4f_Ki%.4f.out",
-        outputDir, KP_STB, KI_STB);
+    sprintf(filename, "%s/stb_Kp%.4f_Ki%.4f.out", outputDir, KP_STB, KI_STB);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
         fprintf(fp, "%% Stabilization Loop  omega_c=0 rad/s\n");
         fprintf(fp, "%% Kp_stab=%.4f  Ki_stab=%.4f  (Tustin integrator)\n", KP_STB, KI_STB);
         fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  samples=%d\n\n", Vg_offset, K_GIMBAL, savecount);
-        fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n", "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega[rad/s]", "Error[rad/s]");
+        fprintf(fp, "%-20s  %-20s    %-20s   %-20s   %-20s   %-20s   %-20s   %-20s\n", 
+            "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega_h[rad/s]", "Error[rad/s]", "disturbance[V]");
         for (k = 0; k < savecount; k++)
-            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k], bufomega_target[k]);
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", 
+                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k], bufomega_target[k], buf_disturbance[k]);
         fclose(fp);
         printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
     }

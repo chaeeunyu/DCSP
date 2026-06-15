@@ -25,7 +25,7 @@ Ki = Wc^2 / Km ;            % unit: [1/s]   (integral gain)
 Kp = (2*Zc*Wc - Pm) / Km ;  % unit: [-]     (proportional gain)
 
 % command magnitudes (read by the Simulink model from the base workspace)
-input_deg = 5 ;     % [deg/s]  commanded rate w_c      <--- MODIFY
+omega_cmd = 0.0 ;     % [deg/s]  commanded rate w_c      <--- MODIFY
 wb_dist   = 10 ;    % [deg/s]  body-rate disturbance w_b <-- MODIFY
 
 % transfer function
@@ -86,9 +86,9 @@ legend(sprintf('Gm: p=%.2f±%.2f[Hz], z=%.2f[Hz]', real_pGm/(2*pi), imag_pGm/(2*
 % step input (rate command)
 Tf = 0.5;
 time = 0:0.001:Tf;
-step_input = input_deg * ones(size(time));
-step_out = lsim(Gcl, step_input, time);
-final_value = step_out(end);
+step_input = omega_cmd * ones(size(time));
+step_out = lsim(Go, step_input, time);
+finsal_value = step_out(end);
 % rise time (90%)
 [~, tr_idx] = min(abs(step_out - final_value*0.9));
 tr = time(tr_idx);
@@ -97,7 +97,7 @@ tr = time(tr_idx);
 max_value = step_out(os_idx);
 Os = (max_value - final_value) / final_value * 100;
 
-Ess = input_deg - final_value;
+Ess = omega_cmd - final_value;
 
 % plot : step response (rate tracking)
 figure(3);

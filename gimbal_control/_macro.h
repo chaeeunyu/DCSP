@@ -11,7 +11,7 @@
 
 
 // basic macro
-#define      DAQ_DEV         "Dev3"
+#define      DAQ_DEV         "Dev8"
 #define      NEUTRAL         (float64)   (2.5)
 #define      ON            (float64)   (5.0)
 #define      OFF            (float64)   (0.0)
@@ -20,9 +20,9 @@
 #define     UNIT_PI         (double)    (3.14159265358979)
 #define     K_GIMBAL        (double)    (1000.0 / 0.67 * UNIT_PI / 180.0)
 #define     N_BIAS          (int)       (200)
-#define		RECORD_TIME		(double)	(10.0)
+#define		RECORD_TIME		(double)	(60.0)
 
-#define      READ_DATA(arr)   DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 2, &sampsPerChanRead, NULL)
+#define     READ_DATA(arr)			DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 3, &sampsPerChanRead, NULL)
 
 // switch macro
 #define     EXIT                (0)
