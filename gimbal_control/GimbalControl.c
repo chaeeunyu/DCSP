@@ -1,95 +1,9 @@
 #include "NIDAQmx.h"
 #include "_macro.h"
 
-TaskHandle g_taskAI = 0;
-TaskHandle g_taskAO = 0;
-int32 sampsPerChanRead;
-int32 sampsPerChanWritten;
 
 
-// time 관련 변수들 structure로 묶으려다가 갯수가 애매해서 걍 놔뒀어요
-// Vcmd, Vc, Vpot, omega, ... 이런애들도 어디는 쓰고 어디는 안쓰는데 있어서 걍 놔둠
-// basic variable
-double time_init = 0.0;
-double time_elapsed = 0.0;
-double Vg_offset = 0.0;
-double Vcmd = 0.0;          /* 이제 [deg/s] 단위로 사용 (파형 명령값) */
-double Vc = 0.0;
-double Vg = 0.0;
-double Vpot = 0.0;
-double omega = 0.0;
-double omega_target = 0.0;  /* InverseMap 내부에서 [rad/s]로 저장됨 */
-double disturbance = 0.0;
-double readArr[3] = { 0.0 };    // ai0, ai2, ai3
-double writeArr[2] = { 0.0 };
-int nStep = 0;
-int count = 0;
-
-/* Sweep (reused per step) */
-double voltSeq[N_STEPS_MAX] = { 0 };
-
-// 버퍼도 structure 만들려다가 걍 놔둠. 한개가지고 돌려쓰면 메모리 절약될거같아요
-/* Triangle / Sine shared (size = TRI_N_MAX) */
-double buftime[BUF_SIZE];
-double bufVcmd[BUF_SIZE];   /* RunWaveVerify/Bode/Static/Step에서는 [deg/s] 저장 */
-double bufVc[BUF_SIZE];
-double bufVg[BUF_SIZE];
-double bufVpot[BUF_SIZE];
-double bufomega[BUF_SIZE];
-double bufomega_target[BUF_SIZE];
-double buf_disturbance[BUF_SIZE];
-
-
-/* Bode results */
-double bode_time[BODE_N_MAX];
-double bode_Vcmd[BODE_N_MAX];   /* [deg/s] */
-double bode_Vc[BODE_N_MAX];
-double bode_Vg[BODE_N_MAX];
-double bode_Vpot[BODE_N_MAX];
-double bode_omega[BODE_N_MAX];
-double bode_omega_target[BODE_N_MAX];
-
-double bode_result_freq[N_FREQS];
-double bode_result_gain[N_FREQS];
-double bode_result_phase[N_FREQS];
-
-double freq_step[N_FREQS] = { 0.0 };
-
-
-/*Function Declarations*/
-double GetWindowTime(void);
-void   memorySet(void);
-void   memorySet_bode(void);
-void   BusyWait_ms(double ms);
-void   WaitNextSample(void);
-int    IsEmergencyStop(void);
-
-void   DAQ_Init(void);
-void   DAQ_Cleanup(void);
-void   DAQ_ReadSample(void);
-void   motor_power(float64 onoff, double voltage);
-
-double CalculateGyroBias(int nSamples);
-int    BuildVoltageSequence(void);
-void   RunSweep(void);
-double InverseMap(double omega_c_deg);   /* 변경: Vcmd[V] → omega_c[deg/s] 입력 */
-double Triangle_cmd(double t);           /* 반환값: [deg/s] */
-void   RunWaveVerify(int mode);
-void   RunStaticVerify(void);
-
-//void TEST_FREQS(void);
-void   RunBode(void);
-void   RunStepResponse(void);
-
-// potentiometer positioning
-void pot_positioning(void);
-void RecordPotData(void);
-
-// Loop Control
-void RunDesignation(void);      // PD
-void RunStabilization(void);    // PI
-
-
+// --------------------------------------------------------------- main ----------------------------------------------------------------
 void main(void)
 {
     int mode = 0;
@@ -185,6 +99,7 @@ void main(void)
     printf("\nProgram finished. Press [Enter] to exit.\n");
     getchar();
 }
+// --------------------------------------------------------------- end main ----------------------------------------------------------------
 
 
 /* Returns current time [ms] */
@@ -194,6 +109,14 @@ double GetWindowTime(void)
     QueryPerformanceCounter(&liCounter);
     QueryPerformanceFrequency(&liFrequency);
     return (liCounter.QuadPart / (double)(liFrequency.QuadPart) * 1000.0);
+}
+
+// for file names!! os timestamp  ---> DO NOT USE IT INSIDE DO-WHILE LOOP
+void GetTimestampString(char* buf, size_t bufSize)
+{
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    strftime(buf, bufSize, "%Y%m%d_%H%M%S", t);
 }
 
 void memorySet(void)
@@ -216,7 +139,7 @@ void BusyWait_ms(double ms)
     while (GetWindowTime() - time_start < ms);
 }
 
-/* Wait until the next sampling interval (based on time_start[ms] and completed sample count) */
+
 void WaitNextSample(void)
 {
     double target_ms = 0.0;
@@ -285,6 +208,16 @@ void DAQ_Cleanup(void)
 
 }
 
+void memorySet_bode(void) {
+    memset(bode_time, 0, sizeof(bode_time));
+    memset(bode_Vcmd, 0, sizeof(bode_Vcmd));
+    memset(bode_Vg, 0, sizeof(bode_Vg));
+    memset(bode_Vc, 0, sizeof(bode_Vc));
+    memset(bode_Vpot, 0, sizeof(bode_Vpot));
+    memset(bode_omega, 0, sizeof(bode_omega));
+    memset(bode_omega_target, 0, sizeof(bode_omega_target));
+}
+
 /* Read 1 sample from DAQ */
 void DAQ_ReadSample(void)
 {
@@ -311,12 +244,12 @@ int BuildVoltageSequence(void)
     int    nDeltas = 0;
     double vCW = 0.0;
     double vCCW = 0.0;
+    int nSteps = 0;
 
     for (int i = 1; i <= 50; i++)  deltas[nDeltas++] = i * 0.01;        /* deadzone */
     for (int i = 1; i <= 39; i++)  deltas[nDeltas++] = 0.50 + i * 0.05; /* outer */
     deltas[nDeltas++] = 2.50;
 
-    int nSteps = 0;
     for (int i = 0; i < nDeltas; i++) {
         vCW = 2.5 + deltas[i]; if (vCW > 5.0) vCW = 5.0;
         vCCW = 2.5 - deltas[i]; if (vCCW < 0.0) vCCW = 0.0;
@@ -334,8 +267,9 @@ void RunSweep(void)
     double omega_i = 0;
     const char* dir;
     char filename[256];
+    int nStep = 0;
+
     nStep = BuildVoltageSequence();
-    int savecount = 0;
 
     char* outputDir = "motor_sweep_data";
     _mkdir(outputDir);
@@ -367,6 +301,7 @@ void RunSweep(void)
         /* Apply voltage */
         motor_power(ON, Vcmd);
 
+        // ------------------------ main loop -----------------------------------
         do {
             DAQ_ReadSample();
             time_elapsed = (GetWindowTime() - time_init) * 0.001;
@@ -382,6 +317,7 @@ void RunSweep(void)
             count++;
             WaitNextSample();
         } while (!IsEmergencyStop() && (time_elapsed < HOLD_TIME));
+        // ------------------------ end while -----------------------------------
 
         /* Neutral pause between steps */
         if (!IsEmergencyStop() && step < N_STEPS_MAX - 1) {
@@ -428,41 +364,44 @@ double Triangle_cmd(double t)
 }
 
 
-
 double InverseMap(double omega_c_deg)
 {
-    /* 1) 포화 클램핑 */
+    double w = 0.0;
+    double Vc_pos_DZ = 0.0;
+    double Vc_neg_DZ = 0.0;
+    double alpha = 0.0;
+
+    // clamping at saturation
     if (omega_c_deg > WC_SAT) omega_c_deg = WC_SAT;
     if (omega_c_deg < -WC_SAT) omega_c_deg = -WC_SAT;
 
-    /* 2) 로깅용 omega_target 저장 (deg/s → rad/s 변환) */
-    omega_target = omega_c_deg * (UNIT_PI / 180.0);   /* [rad/s] */
+    //  !!! omega_target must be [rad/s] since controller gains are all [rad/s] !!!
+    omega_target = omega_c_deg * DEG2RAD;   // [rad/s]
 
-    /* 3) 데드존 경계값 사전 계산 (선형 보간 끝점) */
-    double w = WC_DZ;
-    double Vc_pos_DZ = CW_C4 * w * w * w * w + CW_C3 * w * w * w + CW_C2 * w * w + CW_C1 * w + CW_C0;
+    // calculating deadzone boundary
+    w = WC_DZ;
+    Vc_pos_DZ = CW_COEFF4 * pow(w, 4) + CW_COEFF3 * pow(w, 3) + CW_COEFF2 * pow(w, 2) + CW_COEFF1 * w + CW_COEFF0;
     w = -WC_DZ;
-    double Vc_neg_DZ = CCW_C4 * w * w * w * w + CCW_C3 * w * w * w + CCW_C2 * w * w + CCW_C1 * w + CCW_C0;
+    Vc_neg_DZ = CCW_COEFF4 * pow(w, 4) + CCW_COEFF3 * pow(w, 3) + CCW_COEFF2 * pow(w, 2) + CCW_COEFF1 * w + CCW_COEFF0;
 
-    double Vc = 2.5;
-    double om = omega_c_deg;    /* 이름 단축 */
+    Vc = NEUTRAL;
 
-    if (om >= WC_DZ)             /* ── CW 구간 ── */
+    if (omega_c_deg >= WC_DZ)  // cw
     {
-        Vc = CW_C4 * om * om * om * om + CW_C3 * om * om * om + CW_C2 * om * om + CW_C1 * om + CW_C0;
+        Vc = CW_COEFF4 * pow(omega_c_deg, 4) + CW_COEFF3 * pow(omega_c_deg, 3) + CW_COEFF2 * pow(omega_c_deg, 2) + CW_COEFF1 * omega_c_deg + CW_COEFF0;
     }
-    else if (om <= -WC_DZ)       /* ── CCW 구간 ── */
+    else if (omega_c_deg <= -WC_DZ)   // ccw
     {
-        Vc = CCW_C4 * om * om * om * om + CCW_C3 * om * om * om + CCW_C2 * om * om + CCW_C1 * om + CCW_C0;
+        Vc = CCW_COEFF4 * pow(omega_c_deg, 4) + CCW_COEFF3 * pow(omega_c_deg, 3) + CCW_COEFF2 * pow(omega_c_deg, 2) + CCW_COEFF1 * omega_c_deg + CCW_COEFF0;
     }
-    else                         /* ── 데드존: 직선 보간 ── */
+    else  // deadzone - linear curvefit
     {
-        /* alpha=0 → -WC_DZ (Vc_neg_DZ),  alpha=1 → +WC_DZ (Vc_pos_DZ) */
-        double alpha = (om - (-WC_DZ)) / (2.0 * WC_DZ);
+        // alpha=0 → -WC_DZ (Vc_neg_DZ),  alpha=1 → +WC_DZ (Vc_pos_DZ)
+        alpha = (omega_c_deg - (-WC_DZ)) / (2.0 * WC_DZ);
         Vc = Vc_neg_DZ + alpha * (Vc_pos_DZ - Vc_neg_DZ);
     }
 
-    /* 4) 출력 클램핑 */
+    // output clamping
     if (Vc < 0.0) Vc = 0.0;
     if (Vc > 5.0) Vc = 5.0;
     return Vc;
@@ -472,10 +411,14 @@ void RunWaveVerify(int mode)
 {
     double T_total = 0.0;
     char filename[256];
+    char timestamp[32];
     double omega_c = 0.0;   /* 파형 명령값 [deg/s] */
+    const char* outputDir = "RunWaveVerify";
+    _mkdir(outputDir);
+
     memorySet();
 
-    printf("[Step 1] Turn on gimbal switch, then press [Enter].\n");
+    printf("Turn on gimbal switch, then press [Enter].\n");
     getchar();
     GetAsyncKeyState(VK_SPACE);
     motor_power(ON, NEUTRAL);
@@ -485,13 +428,12 @@ void RunWaveVerify(int mode)
     time_elapsed = 0.0;
     count = 0;
 
-    // main loop
+    // ---------------------------------------- main loop ---------------------------------------------------
     do {
 
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
-        /* 명령 단위: [deg/s]  (기존 Vcmd[V] → omega_c[deg/s] 로 변경) */
-        omega_c = (mode == MODE_SINE) ? SINE_CMD_DEGS(time_elapsed) : Triangle_cmd(time_elapsed);
+        omega_c = (mode == MODE_SINE) ? SINE_CMD_DEGS(time_elapsed) : Triangle_cmd(time_elapsed);   /* omega_c: [deg/s]  */
         Vc = InverseMap(omega_c);   /* omega_c[deg/s] → Vc[V] */
 
         // apply voltage Vc
@@ -500,7 +442,7 @@ void RunWaveVerify(int mode)
 
         if (count < BUF_SIZE) {
             buftime[count] = time_elapsed;
-            bufVcmd[count] = omega_c;       /* [deg/s] 저장 */
+            buf_OmegaCmd[count] = omega_c;  // [deg/s]
             bufVc[count] = Vc;
             bufVg[count] = Vg;
             bufVpot[count] = Vpot;
@@ -509,47 +451,37 @@ void RunWaveVerify(int mode)
         }
         count++;
 
-        if (count % 2000 == 0) // print once every 10s
-            printf("  [%5.1f / %5.1f s]  omega_c=%7.2f deg/s  Vc=%7.4f  omega=%8.4f rad/s\n",
-                time_elapsed, T_total, omega_c, Vc, omega);
+        //if (count % 2000 == 0) // print once every 10s
+        //    printf("  [%5.1f / %5.1f s]  omega_c=%7.2f deg/s  Vc=%7.4f  omega=%8.4f rad/s\n",
+        //        time_elapsed, T_total, omega_c, Vc, omega);
 
         WaitNextSample();
     } while (!IsEmergencyStop() && (time_elapsed < T_total));
+    // ---------------------------------------- main loop ---------------------------------------------------
 
     motor_power(ON, NEUTRAL);
+    savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
 
     // save files
+    GetTimestampString(timestamp, sizeof(timestamp));
+
     if (mode == MODE_SINE) {
-        sprintf(filename, "sine_A%.0fdeg_F%.4f.out", SINE_AMP_DEGS, SINE_FREQ);
+        sprintf(filename, "%s/sine_A%.0fdeg_F%.4f_%s.out", outputDir, SINE_AMP_DEGS, SINE_FREQ, timestamp);
     }
     else
-        sprintf(filename, "tri_A%.0fdeg_F%.4f.out", TRI_AMP_DEGS, 1.0 / TRI_PERIOD);
+        sprintf(filename, "%s/tri_A%.0fdeg_F%.4f_%s.out", outputDir, TRI_AMP_DEGS, 1.0 / TRI_PERIOD, timestamp);
 
     FILE* fp = fopen(filename, "w");
     if (!fp) { printf("[Error] Cannot open: %s\n", filename); return; }
 
-    fprintf(fp, "%% p_cw=[%.6e %.6e %.6e %.6e %.6e]  p_ccw=[%.6e %.6e %.6e %.6e %.6e]\n",
-        CW_C4, CW_C3, CW_C2, CW_C1, CW_C0,
-        CCW_C4, CCW_C3, CCW_C2, CCW_C1, CCW_C0);
     fprintf(fp, "Time[s]              OmegaCmd[deg/s]      Vc[V]"
-        "                Vg[V]                Pot[V]             Omega[rad/s]           Omega_target[rad/s]\n");
+        "                Vg[V]                Pot[V]             Omega_out[deg/s]           Omega_target[deg/s]\n");
     for (int i = 0; i < count; i++)
         fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
-            buftime[i], bufVcmd[i], bufVc[i], bufVg[i], bufVpot[i], bufomega[i], bufomega_target[i]);
+            buftime[i], buf_OmegaCmd[i], bufVc[i], bufVg[i], bufVpot[i], bufomega[i]*RAD2DEG, bufomega_target[i]*RAD2DEG);
 
     fclose(fp);
     printf("[Saved] %s  (%d samples)\n", filename, count);
-}
-
-
-void memorySet_bode(void) {
-    memset(bode_time, 0, sizeof(bode_time));
-    memset(bode_Vcmd, 0, sizeof(bode_Vcmd));
-    memset(bode_Vg, 0, sizeof(bode_Vg));
-    memset(bode_Vc, 0, sizeof(bode_Vc));
-    memset(bode_Vpot, 0, sizeof(bode_Vpot));
-    memset(bode_omega, 0, sizeof(bode_omega));
-    memset(bode_omega_target, 0, sizeof(bode_omega_target));
 }
 
 
@@ -608,6 +540,7 @@ void RunBode(void)
         time_init = GetWindowTime();
         count = 0;
 
+        // ----------------------------------------- do-while loop ----------------------------------------------
         do
         {
             DAQ_ReadSample();
@@ -630,6 +563,7 @@ void RunBode(void)
             WaitNextSample();
 
         } while (count < N_total && !IsEmergencyStop());
+        // ----------------------------------------- end do-while loop ----------------------------------------------
 
         if (IsEmergencyStop()) {
             printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
@@ -646,11 +580,11 @@ void RunBode(void)
             fprintf(fp, "%% Amp=%.2fdeg/s\n", BODE_SINE_AMP_DEGS);
             fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
                 "Time[s]", "OmegaCmd[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]",
-                "Omega[rad/s]", "Omega_target[rad/s]");
+                "Omega[deg/s]", "Omega_target[deg/s]");
             for (int k = 0; k < count; k++)   // ★ N_total → count (비상정지 대응)
                 fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
                     bode_time[k], bode_Vcmd[k], bode_Vc[k], bode_Vg[k], bode_Vpot[k],
-                    bode_omega[k], bode_omega_target[k]);
+                    bode_omega[k]*RAD2DEG, bode_omega_target[k]*RAD2DEG);
             fclose(fp);
             printf("  -> Saved: %s  (%d samples)\n", fname, count);
         }
@@ -669,10 +603,9 @@ void RunBode(void)
 
 void RunStaticVerify(void)
 {
-    double static_cmd[STATIC_N_STEPS] = { 0.0 };   /* [deg/s] 단위 */
+    double static_cmd[STATIC_N_STEPS] = { 0.0 };   // [deg/s] 
     int    n_static = 0;
-    double omega_c_step = 0.0;   /* 현재 스텝 명령값 [deg/s] */
-    int savecount = 0;
+    double omega_c_step = 0.0;   // 현재 스텝 명령값 [deg/s] 
     int avg_start = 0;
     int avg_n = 0;
     double omega_sum = 0.0;
@@ -680,10 +613,10 @@ void RunStaticVerify(void)
     double omega_avg = 0.0;
     double Vc_avg = 0.0;
 
-    /* 명령 배열 생성: [deg/s] 단위 (기존 0.1V 간격 → STATIC_CMD_STEP deg/s 간격) */
+    // 명령 배열 생성: [deg/s] (STATIC_CMD_STEP [deg/s] 간격) 
     for (double v = STATIC_CMD_STEP; v <= STATIC_CMD_MAX_DEGS + 1e-9; v += STATIC_CMD_STEP) {
-        static_cmd[n_static++] = v;   /* CW  [deg/s] */
-        static_cmd[n_static++] = -v;   /* CCW [deg/s] */
+        static_cmd[n_static++] = v;   // CW  [deg/s] 
+        static_cmd[n_static++] = -v;   // CCW [deg/s]
     }   /* n_static == 51 (STATIC_CMD_MAX_DEGS/STATIC_CMD_STEP * 2 + 1 이하) */
 
     const char* outputDir = "static_verify_data";
@@ -740,6 +673,7 @@ void RunStaticVerify(void)
             "Vc = %.4f V  omega_target = %+.4f rad/s\n",
             step + 1, n_static, omega_c_step, Vc, omega_target);
 
+        // --------------------------------------------- do-while loop ----------------------------------------
         do {
             DAQ_ReadSample();
             time_elapsed = (GetWindowTime() - time_init) * 0.001;
@@ -760,6 +694,7 @@ void RunStaticVerify(void)
             WaitNextSample();
 
         } while (!IsEmergencyStop() && (time_elapsed < HOLD_TIME));
+        // --------------------------------------------- end do-while loop ----------------------------------------
 
         // prevent buffer overflow
         savecount = (count < N_HOLD) ? count : N_HOLD;
@@ -799,14 +734,14 @@ void RunStaticVerify(void)
                 "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
                 "Time[s]", "OmegaCmd[deg/s]", "Vc[V]",
                 "Vg[V]", "Pot[V]",
-                "Omega[rad/s]", "Omega_target[rad/s]");
+                "Omega[deg/s]", "Omega_target[deg/s]");
             for (int i = 0; i < savecount; i++)
                 fprintf(pFile,
                     "%20.10f %20.10f %20.10f "
                     "%20.10f %20.10f %20.10f %20.10f\n",
                     buftime[i], bufVcmd[i], bufVc[i],
                     bufVg[i], bufVpot[i],
-                    bufomega[i], bufomega_target[i]);
+                    bufomega[i] * RAD2DEG, bufomega_target[i]*RAD2DEG);
             fclose(pFile);
             printf("  -> Saved : %s  (%d samples)\n", filename, savecount);
         }
@@ -841,7 +776,7 @@ void RunStaticVerify(void)
 void RunStepResponse(void)
 {
     char filename[256];
-    int  savecount = 0;
+    char timestamp[32];
 
     const char* outputDir = "step_response_data";
     _mkdir(outputDir);
@@ -870,9 +805,9 @@ void RunStepResponse(void)
         return;
     }
 
-    /* 명령 단위: [deg/s]  (기존 Vcmd[V] → omega_c[deg/s] 로 변경) */
+    // 명령 단위: [deg/s] 
     double omega_c_step = STEP_INPUT_DEGS;
-    Vc = InverseMap(omega_c_step);   /* omega_c[deg/s] → Vc[V] */
+    Vc = InverseMap(omega_c_step);  
 
     printf("[Step] Applying OmegaCmd = %+.2f deg/s  ->  Vc = %.4f V  "
         "(omega_target = %+.4f rad/s)\n\n", omega_c_step, Vc, omega_target);
@@ -883,6 +818,7 @@ void RunStepResponse(void)
     time_elapsed = 0.0;
     count = 0;
 
+    // ---------------------------------------------- do-while loop --------------------------------------
     do {
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
@@ -899,14 +835,15 @@ void RunStepResponse(void)
             bufomega_target[count] = omega_target;
         }
 
-        if (count % (int)SAMPLING_FREQ == 0)
+       /* if (count % (int)SAMPLING_FREQ == 0)
             printf("  [%5.2f / %.1f s]  omega = %+8.4f rad/s\n",
-                time_elapsed, RECORD_TIME, omega);
+                time_elapsed, RECORD_TIME, omega);*/
 
         count++;
         WaitNextSample();
 
     } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
+    // ---------------------------------------------- end do-while loop --------------------------------------
 
     motor_power(ON, NEUTRAL);
 
@@ -914,8 +851,9 @@ void RunStepResponse(void)
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
+    GetTimestampString(timestamp, sizeof(timestamp));
 
-    sprintf(filename, "%s/step_OmegaCmd%+.0fdeg.out", outputDir, omega_c_step);
+    sprintf(filename, "%s/step_OmegaCmd%+.0fdeg_%s.out", outputDir, omega_c_step, timestamp);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
         fprintf(fp, "%% Step Response  OmegaCmd=%+.2fdeg/s  Vc=%.6fV\n", omega_c_step, Vc);
@@ -926,11 +864,11 @@ void RunStepResponse(void)
             omega_target, STEP_SETTLE_TIME, RECORD_TIME, savecount);
         fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
             "Time[s]", "OmegaCmd[deg/s]", "Vc[V]",
-            "Vg[V]", "Pot[V]", "Omega[rad/s]", "Omega_target[rad/s]");
+            "Vg[V]", "Pot[V]", "Omega[deg/s]", "Omega_target[deg/s]");
         for (int i = 0; i < savecount; i++)
             fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
                 buftime[i], bufVcmd[i], bufVc[i],
-                bufVg[i], bufVpot[i], bufomega[i], bufomega_target[i]);
+                bufVg[i], bufVpot[i], bufomega[i]*RAD2DEG, bufomega_target[i]*RAD2DEG);
         fclose(fp);
         printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
     }
@@ -997,12 +935,12 @@ void pot_positioning(void)
 }
 
 
-/* ── 함수 본체 ── */
 void RecordPotData(void)
 {
-    int savecount = 0;
     char filename[256];
     int file_deg = 0;
+
+    memorySet();
 
     const char* outputDir = "Pot_Modeling";
     _mkdir(outputDir);
@@ -1017,10 +955,6 @@ void RecordPotData(void)
     getchar();
     GetAsyncKeyState(VK_SPACE);
 
-    /* 버퍼 초기화 */
-    memorySet();
-
-    /* 모터 ON 상태 유지 (NEUTRAL = 정지 상태로 유지, 필요 시 Vcmd 변경) */
     motor_power(ON, NEUTRAL);
 
     time_init = GetWindowTime();
@@ -1029,7 +963,7 @@ void RecordPotData(void)
 
     printf("[Recording] %.1f s ...\n", RECORD_TIME);
 
-    /* ── 메인 루프 ── */
+    // ----------------------------------------------- do-while loop ---------------------------------------
     do {
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
@@ -1049,13 +983,14 @@ void RecordPotData(void)
         WaitNextSample();
 
     } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
+    // ----------------------------------------------- do-while loop ---------------------------------------
 
     motor_power(ON, NEUTRAL);
 
     if (IsEmergencyStop())
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
-    /* ── 파일 저장 ── */
+    // save files
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
 
     printf("Enter the angle [deg] cw \n");
@@ -1084,18 +1019,11 @@ void RecordPotData(void)
 }
 
 
-// ──────────────────────────────────────────────────────────────
-//  Designation Loop (PD Position Control)
-//   - User input  : psi_cmd_deg [deg]   (NEUTRAL 기준 절대 각도)
-//                   ( + : CW,  - : CCW )
-//   - psi [deg]   = K_POT * (Vpot - NEUTRAL)
-//   - PD output   : omega_c [deg/s]  ->  InverseMap()  ->  Vc [V]
-// ──────────────────────────────────────────────────────────────
 void RunDesignation(void)
 {
-    char   filename[256];
-    int    savecount = 0;
-    int    k = 0;
+    char filename[256];
+    char timestamp[32];
+    int k = 0;
     double psi_cmd_deg = 0.0;      /* absolute input angle        [deg]   */
     double psi_now_deg = 0.0;      /* absolute current angle      [deg]   */
     double eps_deg = 0.0;           /* epsilon                   [deg]   */
@@ -1120,7 +1048,6 @@ void RunDesignation(void)
 
     GetAsyncKeyState(VK_SPACE);
 
-    // ── Initialize ───────────────────────────────────────────
     memorySet();
     motor_power(ON, NEUTRAL);
     BusyWait_ms(LOOP_SETTLE_TIME * 1000.0);
@@ -1137,12 +1064,12 @@ void RunDesignation(void)
         motor_power(ON, NEUTRAL);
         return;
     }
-
-    // ── Main Loop ────────────────────────────────────────────
+    
     time_init = GetWindowTime();
     time_elapsed = 0.0;
     count = 0;
 
+    // ----------------------------------------- do-while loop ---------------------------------------
     do {
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
@@ -1152,7 +1079,7 @@ void RunDesignation(void)
         eps_rad = eps_deg * DEG2RAD;
         omega_U_rad = KP * eps_rad - KD * omega;    // PD : outer position + inner rate damping
         omega_U_deg = omega_U_rad * RAD2DEG;
-        Vc = InverseMap(omega_U_deg);       // omega_c[deg / s]->Vc[V](saturation / dead - zone 포함)
+        Vc = InverseMap(omega_U_deg);       
 
         motor_power(ON, Vc);        // apply Vc
 
@@ -1176,15 +1103,17 @@ void RunDesignation(void)
         WaitNextSample();
 
     } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
+    // ----------------------------------------- end do-while loop ---------------------------------------
 
     motor_power(ON, NEUTRAL);
 
     if (IsEmergencyStop())
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
-    // ── File Save ────────────────────────────────────────────
+    // save files
+    GetTimestampString(timestamp, sizeof(timestamp));
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
-    sprintf(filename, "%s/dsg_psi%+.0fdeg.out", outputDir, psi_cmd_deg);
+    sprintf(filename, "%s/dsg_psi%+.0fdeg_%s.out", outputDir, psi_cmd_deg, timestamp);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
         fprintf(fp, "%% Designation Loop  psi_cmd=%+.3fdeg  (absolute, NEUTRAL ref)\n",
@@ -1195,11 +1124,11 @@ void RunDesignation(void)
             Vg_offset, K_GIMBAL, savecount);
         fprintf(fp, "%-20s %-20s %-20s %-20s %-20s %-20s %-20s\n",
             "Time[s]", "OmegaCmd[deg/s]", "Vc[V]",
-            "Vg[V]", "Pot[V]", "Omega[rad/s]", "Psi[deg]");
+            "Vg[V]", "Pot[V]", "Omega[deg/s]", "Psi[deg]");
         for (k = 0; k < savecount; k++)
             fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
                 buftime[k], bufVcmd[k], bufVc[k],
-                bufVg[k], bufVpot[k], bufomega[k], bufomega_target[k]);
+                bufVg[k], bufVpot[k], bufomega[k]*RAD2DEG, bufomega_target[k]);
         fclose(fp);
         printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
     }
@@ -1214,9 +1143,9 @@ void RunDesignation(void)
 
 void RunStabilization(void)
 {
-    char   filename[256];
-    int    savecount = 0;
-    int    k = 0;
+    char filename[256];
+    char timestamp[32];
+    int k = 0;
 
     // controller variables
     double omega_c = 0.0;   // = omega_cmd [rad/s] == 0
@@ -1232,7 +1161,7 @@ void RunStabilization(void)
     printf("  [MODE 10] Stabilization Loop (PI Rate Controller)\n");
     printf("  Kp_stab = %.4f [-]   Ki_stab = %.4f [1/s]\n", KP_STB, KI_STB);
     printf("  omega_c = 0 rad/s  (inertial stabilization)\n");
-    printf("  Settle  : %.1f s  |  Record : %.1f s\n", LOOP_SETTLE_TIME, RECORD_TIME);
+    printf("  Settle  : %.1f s  |  Record : %.1f s\n", LOOP_SETTLE_TIME, STABILIZATION_TIME);
     printf("============================================================\n\n");
 
     printf("Turn on gimbal switch, then press [Enter].\n");
@@ -1247,7 +1176,7 @@ void RunStabilization(void)
     DAQ_ReadSample();
     err_prev = omega_c - omega;     // omega_c - omega_h
 
-    printf("[start]   Loop Duration = %+.2f [sec]\n\n", RECORD_TIME);
+    printf("[start]   Loop Duration = %+.2f [sec]\n\n", STABILIZATION_TIME);
 
     if (IsEmergencyStop()) {
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
@@ -1295,27 +1224,28 @@ void RunStabilization(void)
         count++;
         WaitNextSample();
 
-    } while (!IsEmergencyStop() && (time_elapsed < RECORD_TIME));
+    } while (!IsEmergencyStop() && (time_elapsed < STABILIZATION_TIME));
     // -------------------------------------------------------------- end while ---------------------------------------
     motor_power(ON, NEUTRAL);
 
-    printf("----------- while loop is over ----------------\n");
+    printf("----------- while loop is over ----------------\n\n");
     if (IsEmergencyStop())
         printf("\n[EMERGENCY STOP] Spacebar pressed!\n");
 
     // save files
+    GetTimestampString(timestamp, sizeof(timestamp));
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
-    sprintf(filename, "%s/stb_Kp%.4f_Ki%.4f.out", outputDir, KP_STB, KI_STB);
+    sprintf(filename, "%s/stabilization_%s.out", outputDir, timestamp);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
         fprintf(fp, "%% Stabilization Loop  omega_c=0 rad/s\n");
         fprintf(fp, "%% Kp_stab=%.4f  Ki_stab=%.4f  (Tustin integrator)\n", KP_STB, KI_STB);
         fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  samples=%d\n\n", Vg_offset, K_GIMBAL, savecount);
         fprintf(fp, "%-20s  %-20s    %-20s   %-20s   %-20s   %-20s   %-20s   %-20s\n", 
-            "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega_h[rad/s]", "Error[rad/s]", "disturbance[V]");
+            "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega_h[deg/s]", "Error[deg/s]", "disturbance[V]");
         for (k = 0; k < savecount; k++)
             fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", 
-                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k], bufomega_target[k], buf_disturbance[k]);
+                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k]*RAD2DEG, bufomega_target[k]*RAD2DEG, buf_disturbance[k]);
         fclose(fp);
         printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
     }
