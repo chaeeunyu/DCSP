@@ -13,7 +13,7 @@ dz    =28*(pi/180);
 dz_deg = 28;
 
 % Design parameter --- PD-controller
-Wc = 26;  % [rad/s] <================================ MODIFY
+Wc = 27;  % [rad/s] <================================ MODIFY
 Zc = 0.7;  % [-] <================================ MODIFY
 
 Kp = Wc^2 / Km ;       % unit: [rad/s]

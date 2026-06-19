@@ -25,7 +25,7 @@ Ki = Wc^2 / Km ;            % unit: [1/s]   (integral gain)
 Kp = (2*Zc*Wc - Pm) / Km ;  % unit: [-]     (proportional gain)
 
 % command magnitudes (read by the Simulink model from the base workspace)
-input_deg = 100 ;     % [deg/s]  commanded rate w_c      <--- MODIFY
+input_deg = 500 ;     % [deg/s]  commanded rate w_c      <--- MODIFY
 wb_dist   = 10 ;    % [deg/s]  body-rate disturbance w_b <-- MODIFY
 
 % transfer function
@@ -33,9 +33,15 @@ s = tf('s');
 Gm = Km / (s + Pm);     % input: omega_c [deg/s], output: omega [deg/s]
 Gc = Kp + Ki/s ;        % PI controller
 
-Go  = Gc * Gm ;                  % open loop (rate loop)
-Gcl = minreal( Go / (1 + Go) );  % command tracking : w_c -> w_h
+% LPF
+fc_lpf   = 20.0;            % [Hz] LPF 컷오프 주파수
+Wc_lpf   = 2*pi*fc_lpf;     % [rad/s]
+Glpf     = Wc_lpf / (s + Wc_lpf);   % 1st-order LPF
+
+Go  = Gc * Gm * Glpf;               % open loop (rate loop)
+Gcl = minreal( Gc*Gm / (1 + Go) );  % command tracking : w_c -> w_h
 P   = minreal( -1 / (1 + Go) );  % disturbance tf  : w_b -> e   ( = e/w_b )
+Gcl_filt = minreal( Glpf * Gcl );   % omega_lpf와 비교
 
 % disturbance-rejection spec : |e/w_b| at Wmax   (spec : <= 0.1)
 P_at_wmax = abs( evalfr(P, 1j*Wmax) );
@@ -137,19 +143,42 @@ out = sim(model_name);
 t   = out.t_out;        % 시간 벡터
 y   = out.simout;       % 시뮬레이션 결과 데이터
 
-D = readmatrix('stabilization_100.0[deg_s]_20260619_224014.out', ...
+D = readmatrix('stabilization_500.0[deg_s]_20260619_230848.out', ...
     'FileType', 'text', 'NumHeaderLines', 3);
 
 time_meas= D(:,1);
 omega_h = D(:, 6);
+omega_lpf = D(:, 7);
+
+% ---- 시뮬레이션 결과 rise time / overshoot 계산 ----
+final_value_sim = y(end);
+[~, tr_idx_sim] = min(abs(y - final_value_sim*0.9));
+tr_sim = t(tr_idx_sim);
+
+[max_value_sim, os_idx_sim] = max(y);
+Os_sim = (max_value_sim - final_value_sim) / final_value_sim * 100;
+
+Ess_sim = input_deg - final_value_sim;
 
 figure(5);
+grid on; hold on;
+plot(time_meas, omega_lpf, 'r', 'linewidth', 1.3);
+plot(time_meas, omega_h, 'g', 'LineWidth', 1.3);
 plot(t, y, 'b', 'linewidth', 1.3);
-
-grid on;
-hold on;
-plot(time_meas, omega_h, 'r', 'LineWidth', 1.3);
+plot(tr_sim, final_value_sim*0.9, 'r*', 'MarkerSize', 12);
+plot(t(os_idx_sim), max_value_sim, 'k*', 'MarkerSize', 12);
+xlim([0, 2]);
 
 xlabel('time [sec]'); ylabel('\omega [deg/s]');
-legend('Simulation', 'Experiment');
+legend('omega_lpf', 'omega', 'Simulation', ...
+    sprintf('rise time: %.4f [s]', tr_sim), ...
+    sprintf('overshoot: %.4f [%%]', Os_sim));
 title('Simulink Simulation Vs Experiment');
+
+str_sim = {
+    sprintf('rise time = %.4f [s]', tr_sim)
+    sprintf('overshoot = %.4f [%%]', Os_sim)
+    sprintf('Ess = %.2f [deg/s]', Ess_sim)
+};
+annotation('textbox', 'String', str_sim, 'FitBoxToText','on', 'BackgroundColor','w');
+

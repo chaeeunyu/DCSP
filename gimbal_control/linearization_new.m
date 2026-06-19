@@ -8,7 +8,7 @@ files = dir(fullfile(data_dir, 'step_*.out'));
 files = sort({files.name});
 files = files(~cellfun(@isempty, regexp(files, 'step_\d{3}_')));
 
-Vc_CW = []; om_CW = [];
+Vc_CW = []; om_CW = [];S
 Vc_CCW = []; om_CCW = [];
 
 for i = 1:numel(files)

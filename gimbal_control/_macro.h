@@ -22,7 +22,7 @@
 #define     K_GIMBAL			(double)    (1000.0 / 0.67 * UNIT_PI / 180.0)
 #define     N_BIAS				(int)       (200)
 #define		RECORD_TIME			(double)	(5.0)
-#define		STABILIZATION_TIME	(double)	(60.0)
+#define		STABILIZATION_TIME	(double)	(10.0)
 
 #define     READ_DATA(arr)			DAQmxReadAnalogF64(g_taskAI, 1, 10.0, DAQmx_Val_GroupByChannel, (arr), 3, &sampsPerChanRead, NULL)
 
@@ -114,8 +114,8 @@
 // Designation Loop control (PD Position Controller)
 // MATLAB: Kp = Wc^2/Km, Kd = (2*Zc*Wc - Pm)/Km
 // Wc = 37.0, Zc = 0.7, Km = 9.993, Pm = 10.87
-#define KP              (double)( 49.8893)   // [1/s]  <--- VERIFY  
-#define KD              (double)( 1.6487)    // [-]    <--- VERIFY  
+#define KP              (double)(53.800738007380070)   // [1/s]  <--- VERIFY  
+#define KD              (double)(1.752029520295203)    // [-]    <--- VERIFY  
 
 // ── Potentiometer Calibration ─────────────────────────────────
 // Vpot [V] - Vpot_ref [V] = K_POT * psi [deg]

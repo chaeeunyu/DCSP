@@ -1148,11 +1148,19 @@ void RunStabilization(void)
     int k = 0;
 
     // controller variables
-    double omega_c = 0.0;   // = omega_cmd [rad/s] == 0
+    double omega_c = 500.0 * DEG2RAD;   // = omega_cmd [rad/s] == 0
+    double omegaC = omega_c * RAD2DEG; // for file saving
     double err = 0.0;       //  e = omega_c - omega_h [rad/s]
     double err_prev = 0.0;  // for tustin
     double xI = 0.0;        // integrator [rad]
     double omega_U = 0.0;   // [deg/s] PI-controller output (= motor input)'
+
+    // LPF
+    double omega_lpf = 0.0;
+    double fc = 20.0;   // lpf bandwidth
+    double RC = 1.0 / (2.0 * UNIT_PI * fc);
+    double alpha = SAMPLING_TIME / (RC + SAMPLING_TIME);
+    double bufomega_raw[BUF_SIZE];
 
     const char* outputDir = "stabilization_data";
     _mkdir(outputDir);
@@ -1174,7 +1182,8 @@ void RunStabilization(void)
     BusyWait_ms(LOOP_SETTLE_TIME * 1000.0);
 
     DAQ_ReadSample();
-    err_prev = omega_c - omega;     // omega_c - omega_h
+    omega_lpf = omega;
+    err_prev = omega_c - omega_lpf;     // omega_c - omega_h
 
     printf("[start]   Loop Duration = %+.2f [sec]\n\n", STABILIZATION_TIME);
 
@@ -1194,8 +1203,11 @@ void RunStabilization(void)
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
+        // ---- LPF 적용 ----
+        omega_lpf = omega_lpf + alpha * (omega - omega_lpf);
+
         // calculate error
-        err = omega_c - omega;      // [rad/s] 
+        err = omega_c - omega_lpf;      // [rad/s] 
 
         // tustin method
         xI = xI + (SAMPLING_TIME / 2) * (err + err_prev);   // trapezoidal
@@ -1216,7 +1228,8 @@ void RunStabilization(void)
             bufVc[count] = Vc;
             bufVg[count] = Vg;
             bufVpot[count] = Vpot;
-            bufomega[count] = omega;
+            bufomega[count] = omega;  // signal before lpf
+            bufomega_raw[count] = omega_lpf; // signal after lpf
             bufomega_target[count] = err; // [rad/s]
             buf_disturbance[count] = disturbance;
         }
@@ -1235,17 +1248,17 @@ void RunStabilization(void)
     // save files
     GetTimestampString(timestamp, sizeof(timestamp));
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
-    sprintf(filename, "%s/stabilization_%s.out", outputDir, timestamp);
+    sprintf(filename, "%s/stabilization_%.1f[deg_s]_%s.out", outputDir, omegaC, timestamp);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
         fprintf(fp, "%% Stabilization Loop  omega_c=0 rad/s\n");
         fprintf(fp, "%% Kp_stab=%.4f  Ki_stab=%.4f  (Tustin integrator)\n", KP_STB, KI_STB);
         fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  samples=%d\n\n", Vg_offset, K_GIMBAL, savecount);
-        fprintf(fp, "%-20s  %-20s    %-20s   %-20s   %-20s   %-20s   %-20s   %-20s\n", 
-            "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega_h[deg/s]", "Error[deg/s]", "disturbance[V]");
+        fprintf(fp, "%-20s  %-20s    %-20s   %-20s   %-20s   %-20s   %-20s   %-20s   %-20s\n", 
+            "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega_h[deg/s]", "omega_LPF[deg/s]", "Error[deg/s]", "disturbance[V]");
         for (k = 0; k < savecount; k++)
-            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", 
-                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k]*RAD2DEG, bufomega_target[k]*RAD2DEG, buf_disturbance[k]);
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", 
+                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k]*RAD2DEG, bufomega_raw[k]*RAD2DEG, bufomega_target[k]*RAD2DEG, buf_disturbance[k]);
         fclose(fp);
         printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
     }
