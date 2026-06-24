@@ -16,8 +16,17 @@ dz_deg = 28;
 Wmax = 2*pi*0.5;   % [rad/s]  <----------------------------- MODIFY (use given spec)
 
 % Design parameter --- PI-controller
-Wc = 20.0;  % <-------------------------------------------- MODIFY
+Wc = 21.0;  % <-------------------------------------------- MODIFY
 Zc = 0.7;   % <-------------------------------------------- MODIFY
+
+% c코드 stabilization data
+% lpf 있는 
+D_wLPF = readmatrix('stabilization_500.0[deg_s]_Wc=21.0,Zc=0.7_wLPF.out', ...
+    'FileType', 'text', 'NumHeaderLines', 3);
+% lpf 없는 
+D_woLPF = readmatrix('stabilization_500.0[deg_s]_Wc=21.0,Zc=0.7_noLPF.out', ...
+    'FileType', 'text', 'NumHeaderLines', 3);
+
 
 %  PD : Kp = Wc^2/Km ,        Kd = (2*Zc*Wc - Pm)/Km
 %  PI : Ki = Wc^2/Km ,        Kp = (2*Zc*Wc - Pm)/Km   (dual structure)
@@ -143,12 +152,19 @@ out = sim(model_name);
 t   = out.t_out;        % 시간 벡터
 y   = out.simout;       % 시뮬레이션 결과 데이터
 
-D = readmatrix('stabilization_500.0[deg_s]_20260619_230848.out', ...
-    'FileType', 'text', 'NumHeaderLines', 3);
 
-time_meas= D(:,1);
-omega_h = D(:, 6);
-omega_lpf = D(:, 7);
+time_meas= D_wLPF(:,1);
+timeidx = find(time_meas >= 1.0 & time_meas <= 1.5);
+omega_h = D_woLPF(:, 6);
+omega_lpf = D_wLPF(:, 7);
+
+% ---- 실험 결과 rise time/ overshoot 계산 ----
+omega_mean = mean(omega_lpf(timeidx));
+[~, tr_idx_exp] = min(abs(omega_lpf - omega_mean*0.9));
+tr_exp = time_meas(tr_idx_exp);
+
+[max_value_exp, os_idx_exp] = max(omega_lpf);
+Os_exp = (max_value_exp - omega_mean) / omega_mean * 100 ;
 
 % ---- 시뮬레이션 결과 rise time / overshoot 계산 ----
 final_value_sim = y(end);
@@ -165,19 +181,21 @@ grid on; hold on;
 plot(time_meas, omega_lpf, 'r', 'linewidth', 1.3);
 plot(time_meas, omega_h, 'g', 'LineWidth', 1.3);
 plot(t, y, 'b', 'linewidth', 1.3);
-plot(tr_sim, final_value_sim*0.9, 'r*', 'MarkerSize', 12);
-plot(t(os_idx_sim), max_value_sim, 'k*', 'MarkerSize', 12);
-xlim([0, 2]);
+plot(tr_sim, final_value_sim*0.9, 'b*', 'MarkerSize', 12);  % simul tr
+plot(t(os_idx_sim), max_value_sim, 'bo', 'MarkerSize', 12); % simul os
+plot(tr_exp, omega_mean*0.9, 'r*', 'MarkerSize', 12);       % exp tr
+plot(time_meas(os_idx_exp), max_value_exp, 'ro', 'MarkerSize', 12); % exp os
+xlim([0, 0.5]);
 
 xlabel('time [sec]'); ylabel('\omega [deg/s]');
-legend('omega_lpf', 'omega', 'Simulation', ...
-    sprintf('rise time: %.4f [s]', tr_sim), ...
-    sprintf('overshoot: %.4f [%%]', Os_sim));
-title('Simulink Simulation Vs Experiment');
+legend('omega(lpf)', 'omega_h', 'Simulation', ...
+    sprintf('rise time(simul) = %.4f [s]', tr_sim), ...
+sprintf('overshoot(simul) = %.4f [%%]', Os_sim), ...
+    sprintf('rise time(exp) = %.4f [s]', tr_exp), ...
+    sprintf('overshoot(exp) = %.4f [%%]', Os_exp));
+title(sprintf('Stabilization Performance (Simulation Vs Experiment) \\omega_c=%.f', Wc));
 
 str_sim = {
-    sprintf('rise time = %.4f [s]', tr_sim)
-    sprintf('overshoot = %.4f [%%]', Os_sim)
     sprintf('Ess = %.2f [deg/s]', Ess_sim)
 };
 annotation('textbox', 'String', str_sim, 'FitBoxToText','on', 'BackgroundColor','w');

@@ -1031,6 +1031,11 @@ void RunDesignation(void)
     double omega_deg = 0.0;        /* omega measured              [deg/s] */
     double omega_U_deg = 0.0;      /* omega_cmd                   [deg/s] */
     double omega_U_rad = 0.0;
+    double omega_c = 0.0;
+    double Zc = 0.0;
+    
+    omega_c = sqrt(KP * 13.55);
+    Zc = (13.55 * KD + 14.06) / (2 * omega_c);
 
     const char* outputDir = "designation_data";
     _mkdir(outputDir);
@@ -1113,7 +1118,7 @@ void RunDesignation(void)
     // save files
     GetTimestampString(timestamp, sizeof(timestamp));
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
-    sprintf(filename, "%s/dsg_psi%+.0fdeg_%s.out", outputDir, psi_cmd_deg, timestamp);
+    sprintf(filename, "%s/dsg_psi%+.0fdeg_Wc=%.1f, Zc=%.1f_%s.out", outputDir, psi_cmd_deg, omega_c, Zc, timestamp);
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
         fprintf(fp, "%% Designation Loop  psi_cmd=%+.3fdeg  (absolute, NEUTRAL ref)\n",
@@ -1146,21 +1151,29 @@ void RunStabilization(void)
     char filename[256];
     char timestamp[32];
     int k = 0;
+    double omega_c = 0.0;
+    double Zc = 0.0;
+
+    omega_c = sqrt(13.55 * KI_STB);
+    Zc = (13.55 * KP_STB + 14.06) / (2 * omega_c);
 
     // controller variables
-    double omega_c = 500.0 * DEG2RAD;   // = omega_cmd [rad/s] == 0
-    double omegaC = omega_c * RAD2DEG; // for file saving
-    double err = 0.0;       //  e = omega_c - omega_h [rad/s]
+    double omega_cmd = 500.0 * DEG2RAD;   // = omega_cmd [rad/s] == 0
+    double omegaC = omega_cmd * RAD2DEG; // for file saving
+    double err = 0.0;       //  e = omega_cmd - omega_h [rad/s]
     double err_prev = 0.0;  // for tustin
     double xI = 0.0;        // integrator [rad]
-    double omega_U = 0.0;   // [deg/s] PI-controller output (= motor input)'
+    double omega_U = 0.0;   // [deg/s] PI-controller output (= motor input)
 
     // LPF
     double omega_lpf = 0.0;
+    double omega_prev = 0.0;
     double fc = 20.0;   // lpf bandwidth
-    double RC = 1.0 / (2.0 * UNIT_PI * fc);
-    double alpha = SAMPLING_TIME / (RC + SAMPLING_TIME);
-    double bufomega_raw[BUF_SIZE];
+    double Wc_lpf = 2.0 * UNIT_PI * fc;
+    // LPF tustin coefficients
+    double alpha_lpf = (Wc_lpf * SAMPLING_TIME) / (2.0 + Wc_lpf * SAMPLING_TIME);
+    double beta_lpf = (2.0 - Wc_lpf * SAMPLING_TIME) / (2.0 + Wc_lpf * SAMPLING_TIME);
+    double bufomega_raw[BUF_SIZE];   // signal after lpf (이름과 내용 반대이니 주의)
 
     const char* outputDir = "stabilization_data";
     _mkdir(outputDir);
@@ -1168,7 +1181,8 @@ void RunStabilization(void)
     printf("============================================================\n");
     printf("  [MODE 10] Stabilization Loop (PI Rate Controller)\n");
     printf("  Kp_stab = %.4f [-]   Ki_stab = %.4f [1/s]\n", KP_STB, KI_STB);
-    printf("  omega_c = 0 rad/s  (inertial stabilization)\n");
+    printf("  omega_cmd = 0 rad/s  (inertial stabilization)\n");
+    printf("  LPF     : %s  (fc = %.1f Hz)\n", (USE_LPF ? "ON" : "OFF"), fc);
     printf("  Settle  : %.1f s  |  Record : %.1f s\n", LOOP_SETTLE_TIME, STABILIZATION_TIME);
     printf("============================================================\n\n");
 
@@ -1183,7 +1197,13 @@ void RunStabilization(void)
 
     DAQ_ReadSample();
     omega_lpf = omega;
-    err_prev = omega_c - omega_lpf;     // omega_c - omega_h
+    omega_prev = omega;  // assume steady-state
+
+#if USE_LPF
+    err_prev = omega_cmd - omega_lpf;   // w/ LPF ---- omega_cmd - omega_h
+#else
+    err_prev = omega_cmd - omega;       // w/o LPF
+#endif
 
     printf("[start]   Loop Duration = %+.2f [sec]\n\n", STABILIZATION_TIME);
 
@@ -1203,11 +1223,16 @@ void RunStabilization(void)
         DAQ_ReadSample();
         time_elapsed = (GetWindowTime() - time_init) * 0.001;
 
-        // ---- LPF 적용 ----
-        omega_lpf = omega_lpf + alpha * (omega - omega_lpf);
+        // ---- LPF 계산 (USE_LPF=0일 때도 로깅용으로 항상 갱신) ----
+        omega_lpf = alpha_lpf * (omega + omega_prev) + beta_lpf * omega_lpf;
+        omega_prev = omega;
 
         // calculate error
-        err = omega_c - omega_lpf;      // [rad/s] 
+#if USE_LPF
+        err = omega_cmd - omega_lpf;      // w/ LPF [rad/s]
+#else
+        err = omega_cmd - omega;          // w/o LPF [rad/s]
+#endif
 
         // tustin method
         xI = xI + (SAMPLING_TIME / 2) * (err + err_prev);   // trapezoidal
@@ -1228,9 +1253,9 @@ void RunStabilization(void)
             bufVc[count] = Vc;
             bufVg[count] = Vg;
             bufVpot[count] = Vpot;
-            bufomega[count] = omega;  // signal before lpf
-            bufomega_raw[count] = omega_lpf; // signal after lpf
-            bufomega_target[count] = err; // [rad/s]
+            bufomega[count] = omega;          // raw omega (USE_LPF=1이면 controller가 실제로 보는 값은 아님)
+            bufomega_raw[count] = omega_lpf;  // LPF 적용된 omega (변수명과 내용이 반대이니 주의)
+            bufomega_target[count] = err;     // [rad/s], 이번 모드에서 controller가 실제로 사용한 error
             buf_disturbance[count] = disturbance;
         }
 
@@ -1248,17 +1273,26 @@ void RunStabilization(void)
     // save files
     GetTimestampString(timestamp, sizeof(timestamp));
     savecount = (count < BUF_SIZE) ? count : BUF_SIZE;
-    sprintf(filename, "%s/stabilization_%.1f[deg_s]_%s.out", outputDir, omegaC, timestamp);
+
+#if USE_LPF
+    sprintf(filename, "%s/stabilization_%.1f[deg_s]_Wc=%.1f,Zc=%.1f_wLPF.out",
+        outputDir, omegaC, omega_c, Zc);
+#else
+    sprintf(filename, "%s/stabilization_%.1f[deg_s]_Wc=%.1f,Zc=%.1f_noLPF.out",
+        outputDir, omegaC, omega_c, Zc);
+#endif
+
     FILE* fp = fopen(filename, "w+t");
     if (fp) {
-        fprintf(fp, "%% Stabilization Loop  omega_c=0 rad/s\n");
+        fprintf(fp, "%% Stabilization Loop  omega_cmd=0 rad/s\n");
         fprintf(fp, "%% Kp_stab=%.4f  Ki_stab=%.4f  (Tustin integrator)\n", KP_STB, KI_STB);
+        fprintf(fp, "%% LPF=%s  fc=%.1f Hz\n", (USE_LPF ? "ON" : "OFF"), fc);
         fprintf(fp, "%% Vg_offset=%.6fV  K_gimbal=%.6f  samples=%d\n\n", Vg_offset, K_GIMBAL, savecount);
-        fprintf(fp, "%-20s  %-20s    %-20s   %-20s   %-20s   %-20s   %-20s   %-20s   %-20s\n", 
+        fprintf(fp, "%-20s  %-20s    %-20s   %-20s   %-20s   %-20s   %-20s   %-20s   %-20s\n",
             "Time[s]", "OmegaU[deg/s]", "Vc[V]", "Vg[V]", "Pot[V]", "Omega_h[deg/s]", "omega_LPF[deg/s]", "Error[deg/s]", "disturbance[V]");
         for (k = 0; k < savecount; k++)
-            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n", 
-                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k]*RAD2DEG, bufomega_raw[k]*RAD2DEG, bufomega_target[k]*RAD2DEG, buf_disturbance[k]);
+            fprintf(fp, "%20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f %20.10f\n",
+                buftime[k], bufVcmd[k], bufVc[k], bufVg[k], bufVpot[k], bufomega[k] * RAD2DEG, bufomega_raw[k] * RAD2DEG, bufomega_target[k] * RAD2DEG, buf_disturbance[k]);
         fclose(fp);
         printf("\n[Saved] %s  (%d samples)\n", filename, savecount);
     }
@@ -1268,4 +1302,4 @@ void RunStabilization(void)
 
     printf("[MODE 10 Done] Output folder: %s\n\n", outputDir);
 
-}  
+}

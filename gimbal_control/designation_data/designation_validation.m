@@ -5,7 +5,7 @@
 clear; close all; clc;
 
 %% ── 0. Load data ──────────────────────────────
-d = readmatrix('dsg_psi+20deg_20260620_010048.out', 'Filetype', 'text', 'NumHeaderLines', 5);
+d = readmatrix('dsg_psi+20deg_Wc=35.0, Zc=0.7_20260621_131503.out', 'Filetype', 'text', 'NumHeaderLines', 5);
 t        = d(:,1);   % [s]
 omega_c  = d(:,2);   % [deg/s]
 Vc       = d(:,3);   % [V]
