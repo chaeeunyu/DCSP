@@ -5,8 +5,8 @@
 clear; close all; clc;
 
 % 1. System Parameters
-Km = 9.993;
-Pm = 10.87;
+Km = 13.55; % <------------------- MODIFY!!!
+Pm = 14.06; % <------------------- MODIFY!!!
 
 % 2. Design Parameter Vectors
 Wc_vec = 10:0.5:50;
@@ -107,5 +107,5 @@ legend('show', 'Location', 'northeast');
 figure(5);
 title('GM 성능지표');
 xlabel('Control Bandwidth, \omega_c/Pm [-]');  ylabel('GM [dB]');
-yline(10, 'r--', 'Target Spec (PM \geq 10[dB])', 'LineWidth', 1.5, 'LabelHorizontalAlignment', 'left');
+yline(10, 'r--', 'Target Spec (GM \geq 10[dB])', 'LineWidth', 1.5, 'LabelHorizontalAlignment', 'left');
 legend('show', 'Location', 'northeast');
